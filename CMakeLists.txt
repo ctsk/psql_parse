@@ -16,6 +16,14 @@ include(FindBISON)
 find_package(BISON REQUIRED)
 message(STATUS "Bison version: ${BISON_VERSION}")
 
+include(FetchContent)
+FetchContent_Declare(
+        Catch2
+        GIT_REPOSITORY https://github.com/catchorg/Catch2
+        GIT_TAG        ab6c7375be9a8e71ee84c6f8537113f9f47daf99
+)
+FetchContent_MakeAvailable(Catch2)
+
 
 #[=======[
 # Headers
@@ -51,7 +59,7 @@ set(SOURCES
         ${FLEX_gen_scanner_OUTPUTS}
         ${BISON_gen_parser_OUTPUTS}
 
-        "${CMAKE_SOURCE_DIR}/src/driver.cpp" src/scanner.cpp)
+        "${CMAKE_SOURCE_DIR}/src/driver.cpp" src/scanner.cpp test/test_utils.cpp)
 
 
 add_library(psql_parse ${SOURCES})
@@ -64,4 +72,5 @@ set(TEST_SOURCES
         ${CMAKE_SOURCE_DIR}/test/tester.cpp)
 
 add_executable(runtests ${TEST_SOURCES})
-target_link_libraries(runtests psql_parse)
+target_link_libraries(runtests PRIVATE psql_parse Catch2::Catch2WithMain)
+
