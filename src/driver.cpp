@@ -3,7 +3,7 @@
 psql_parse::driver::driver()
 : scanner_(nullptr)
 , trace_scanning_(false)
-, trace_parsing_(true) { }
+, trace_parsing_(false) { }
 
 bool psql_parse::driver::parse(std::istream &in) {
     scanner_ = std::make_unique<scanner>(&in);

@@ -21,12 +21,16 @@ namespace psql_parse {
 		PRESERVE
 	};
 
-	enum class ColumnDefault {
+	enum class UserSpec {
 		CURRENT_USER,
 		SESSION_USER,
 		SYSTEM_USER,
-		NUL
 	};
+
+	using ColumnDefault = std::variant<
+			UserSpec,
+			V_NULL,
+			std::unique_ptr<Expression>>;
 
 	enum class ReferentialAction {
 		CASCADE,

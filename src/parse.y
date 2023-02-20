@@ -77,10 +77,11 @@ class driver;
 	UNIQUE UPDATE USER VARCHAR VARYING WITH ZONE
 
 %type <std::unique_ptr<psql_parse::Statement>>		pseudo_start
-%type <std::unique_ptr<psql_parse::Expression>>		numeric_literal
+%type <std::unique_ptr<psql_parse::NumberLiteral>>	numeric_literal
 %type <std::unique_ptr<psql_parse::NumberLiteral>>	signed_numeric_literal
 %type <std::unique_ptr<psql_parse::NumberLiteral>>	unsigned_numeric_literal
-%type <std::unique_ptr<psql_parse::Expression>>		general_literal
+%type <std::unique_ptr<psql_parse::StringLiteral>>	general_literal
+%type <std::unique_ptr<psql_parse::Expression>>		literal
 %type <std::unique_ptr<psql_parse::Statement>>		ExprStatement
 %type <std::unique_ptr<psql_parse::Statement>>		CreateStatement
 
@@ -142,13 +143,13 @@ ExprStatement:
  */
 
 literal:
-    numeric_literal
- |  general_literal
+    numeric_literal		{ $$ = std::move($numeric_literal); }
+ |  general_literal		{ $$ = std::move($general_literal); }
  ;
 
 numeric_literal:
-    signed_numeric_literal
- |  unsigned_numeric_literal
+    signed_numeric_literal	{ $$ = std::move($signed_numeric_literal); }
+ |  unsigned_numeric_literal	{ $$ = std::move($unsigned_numeric_literal); }
 
 signed_numeric_literal:
     PLUS unsigned_numeric_literal	{ std::swap($$, $unsigned_numeric_literal); }
@@ -161,11 +162,12 @@ unsigned_numeric_literal:
  ;
 
 general_literal:
-    STRING_VALUE	{ $$ = std::make_unique<StringLiteral>(@STRING_VALUE, $STRING_VALUE, StringLiteralType::CHAR); }
- |  BIT_VALUE		{ $$ = std::make_unique<StringLiteral>(@BIT_VALUE, $BIT_VALUE, StringLiteralType::BIT); }
- |  HEX_VALUE		{ $$ = std::make_unique<StringLiteral>(@HEX_VALUE, $HEX_VALUE, StringLiteralType::HEX); }
- |  NATIONAL_VALUE	{ $$ = std::make_unique<StringLiteral>(@NATIONAL_VALUE, $NATIONAL_VALUE, StringLiteralType::NATIONAL); }
+    STRING_VALUE	{ $$ = std::make_unique<StringLiteral>(@STRING_VALUE, std::move($STRING_VALUE), StringLiteralType::CHAR); }
+ |  BIT_VALUE		{ $$ = std::make_unique<StringLiteral>(@BIT_VALUE, std::move($BIT_VALUE), StringLiteralType::BIT); }
+ |  HEX_VALUE		{ $$ = std::make_unique<StringLiteral>(@HEX_VALUE, std::move($HEX_VALUE), StringLiteralType::HEX); }
+ |  NATIONAL_VALUE	{ $$ = std::make_unique<StringLiteral>(@NATIONAL_VALUE, std::move($NATIONAL_VALUE), StringLiteralType::NATIONAL); }
 
+/* Missing: INTERVAL */
 data_type:
     DECIMAL precision_scale_spec[spec]		{ $$ = DecimalType { $spec.first, $spec.second }; }
  |  FLOAT precision_spec[spec]			{ $$ = FloatType { $spec }; }
@@ -279,7 +281,7 @@ column_def_and_constraint:
 
 column_def:
     IDENTIFIER[column_name] column_type opt_default_clause opt_column_constraint_def opt_collate_clause
-    { $$ = ColumnDef { $column_name, $column_type, $opt_default_clause, std::move($opt_column_constraint_def), $opt_collate_clause}; }
+    { $$ = std::move(ColumnDef { $column_name, $column_type, std::move($opt_default_clause), std::move($opt_column_constraint_def), $opt_collate_clause}); }
  ;
 
 column_type:
@@ -288,22 +290,22 @@ column_type:
  ;
 
 opt_default_clause:
-    default_clause		{ $$ = $default_clause; }
+    default_clause		{ $$ = std::move($default_clause); }
  |  %empty			{ $$ = std::nullopt; }
  ;
 
 default_clause:
-    DEFAULT default_option	{ $$ = $default_option; }
+    DEFAULT default_option	{ $$ = std::move($default_option); }
  ;
 
 default_option:
- /*  literal
- | datetime value function
- |*/  USER		{ $$ = ColumnDefault::CURRENT_USER; }
- |  CURRENT_USER	{ $$ = ColumnDefault::CURRENT_USER; }
- |  SESSION_USER	{ $$ = ColumnDefault::SESSION_USER; }
- |  SYSTEM_USER		{ $$ = ColumnDefault::SYSTEM_USER; }
- |  NULL		{ $$ = ColumnDefault::NUL; }
+   literal		{ $$ = std::move($1); }
+ /*| datetime value function */
+ |  USER		{ $$ = UserSpec::CURRENT_USER; }
+ |  CURRENT_USER	{ $$ = UserSpec::CURRENT_USER; }
+ |  SESSION_USER	{ $$ = UserSpec::SESSION_USER; }
+ |  SYSTEM_USER		{ $$ = UserSpec::SYSTEM_USER; }
+ |  NULL		{ $$ = V_NULL { }; }
  ;
 
 opt_column_constraint_def:

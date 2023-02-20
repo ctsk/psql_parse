@@ -9,10 +9,8 @@ namespace psql_parse {
 		explicit Expression(location loc);
 	};
 
-
 	struct NumberLiteral: public Expression {
 		explicit NumberLiteral(location loc);
-
 		virtual void negate() = 0;
 	};
 

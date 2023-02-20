@@ -62,6 +62,8 @@ namespace psql_parse {
 
 	using DomainName = QualifiedName;
 
+	using V_NULL = std::monostate;
+
 	enum class StringLiteralType {
 		BIT,
 		CHAR,
