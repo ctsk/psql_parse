@@ -92,8 +92,10 @@ namespace psql_parse {
 		QualifiedName rel_name;
 		std::optional<Temporary> temp;
 		std::optional<OnCommit> on_commit;
+		std::vector<ColumnDef> column_defs;
+		std::vector<TableConstraint> table_constraints;
 
-		CreateStatement(location loc, QualifiedName relName, std::optional<Temporary> temp, std::optional<OnCommit> onCommit);
+		CreateStatement(location loc, QualifiedName relName, std::optional<Temporary> temp, std::optional<OnCommit> onCommit, std::vector<std::variant<ColumnDef, TableConstraint>> elements);
 	};
 }
 

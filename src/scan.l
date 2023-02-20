@@ -106,6 +106,7 @@ cascade         { return psql_parse::parser::make_CASCADE(loc); }
 character       { return psql_parse::parser::make_CHARACTER(loc); }
 char            { return psql_parse::parser::make_CHARACTER(loc); }
 collate         { return psql_parse::parser::make_COLLATE(loc); }
+commit          { return psql_parse::parser::make_COMMIT(loc); }
 constraint      { return psql_parse::parser::make_CONSTRAINT(loc); }
 create          { return psql_parse::parser::make_CREATE(loc); }
 current_user    { return psql_parse::parser::make_CURRENT_USER(loc); }
@@ -117,9 +118,11 @@ double          { return psql_parse::parser::make_DOUBLE(loc); }
 float           { return psql_parse::parser::make_FLOAT(loc); }
 foreign         { return psql_parse::parser::make_FOREIGN(loc); }
 full            { return psql_parse::parser::make_FULL(loc); }
+global          { return psql_parse::parser::make_GLOBAL(loc); }
 integer         { return psql_parse::parser::make_INTEGER(loc); }
 int             { return psql_parse::parser::make_INTEGER(loc); }
 key             { return psql_parse::parser::make_KEY(loc); }
+local           { return psql_parse::parser::make_LOCAL(loc); }
 match           { return psql_parse::parser::make_MATCH(loc); }
 national        { return psql_parse::parser::make_NATIONAL(loc); }
 nchar           { return psql_parse::parser::make_NCHAR(loc); }
@@ -130,6 +133,7 @@ numeric         { return psql_parse::parser::make_NUMERIC(loc); }
 on              { return psql_parse::parser::make_ON(loc); }
 partial         { return psql_parse::parser::make_PARTIAL(loc); }
 precision       { return psql_parse::parser::make_PRECISION(loc); }
+preserve        { return psql_parse::parser::make_PRESERVE(loc); }
 primary         { return psql_parse::parser::make_PRIMARY(loc); }
 real            { return psql_parse::parser::make_REAL(loc); }
 references      { return psql_parse::parser::make_REFERENCES(loc); }
@@ -138,6 +142,7 @@ session_user    { return psql_parse::parser::make_SESSION_USER(loc); }
 smallint        { return psql_parse::parser::make_SMALLINT(loc); }
 system_user     { return psql_parse::parser::make_SYSTEM_USER(loc); }
 table           { return psql_parse::parser::make_TABLE(loc); }
+temporary       { return psql_parse::parser::make_TEMPORARY(loc); }
 unique          { return psql_parse::parser::make_UNIQUE(loc); }
 update          { return psql_parse::parser::make_UPDATE(loc); }
 user            { return psql_parse::parser::make_USER(loc); }

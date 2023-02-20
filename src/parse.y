@@ -68,10 +68,10 @@ class driver;
 %token 			MINUS		"-"
 %token 			QUOTE		"'"
 
-%token 	ACTION BIT CASCADE CHARACTER COLLATE CONSTRAINT CREATE CURRENT_USER DECIMAL DEFAULT DELETE DOUBLE FLOAT
-	FOREIGN FULL INTEGER KEY MATCH NATIONAL NO NOT NCHAR NULL NUMERIC ON PARTIAL PRECISION PRIMARY REAL
-	REFERENCES ROWS SESSION_USER SET SMALLINT SYSTEM_USER TABLE UNIQUE UPDATE USER VARCHAR VARYING
-
+%token 	ACTION BIT CASCADE CHARACTER COLLATE COMMIT CONSTRAINT CREATE CURRENT_USER DECIMAL DEFAULT DELETE DOUBLE FLOAT
+	FOREIGN FULL GLOBAL INTEGER KEY LOCAL MATCH NATIONAL NO NOT NCHAR NULL NUMERIC ON PARTIAL PRECISION PRESERVE
+	PRIMARY REAL REFERENCES ROWS SESSION_USER SET SMALLINT SYSTEM_USER TABLE TEMPORARY UNIQUE UPDATE USER VARCHAR
+	VARYING
 
 %type <std::unique_ptr<psql_parse::Statement>>		pseudo_start
 %type <std::unique_ptr<psql_parse::Expression>>		numeric_literal
@@ -91,7 +91,10 @@ class driver;
 %type <std::vector<Name>>				identifier_list
 %type <std::vector<Name>>				opt_identifier_list
 %type <QualifiedName>					qualified_name
-
+%type <std::optional<Temporary>>			opt_temporary
+%type <std::optional<OnCommit>>				opt_on_commit
+%type <std::vector<std::variant<ColumnDef, TableConstraint>>> column_defs_and_constraints
+%type <std::variant<ColumnDef, TableConstraint>>	column_def_and_constraint
 %type <ColumnDef>					column_def
 %type <std::variant<DataType, DomainName>>		column_type
 %type <std::optional<ColumnDefault>>			opt_default_clause
@@ -222,20 +225,32 @@ qualified_name:
  *   CREATE TABLE <name> ...
  */
 CreateStatement:
-    CREATE TABLE IDENTIFIER LP column_defs_and_constraints_or_empty RP { }
-    //{ $$ = std::make_unique<CreateStatement>(@$, $IDENTIFIER); }
+    CREATE opt_temporary TABLE qualified_name[table_name] LP column_defs_and_constraints[table_elems] RP opt_on_commit
+    { $$ = std::make_unique<CreateStatement>(@$, $table_name, $opt_temporary, $opt_on_commit, std::move($table_elems)); }
     ;
 
-column_defs_and_constraints_or_empty:
-    column_defs_and_constraints		{}
- |  %empty				{}
+opt_temporary:
+    LOCAL TEMPORARY	{ $$ = Temporary::LOCAL; }
+ |  GLOBAL TEMPORARY    { $$ = Temporary::GLOBAL; }
+ |  %empty		{ $$ = std::nullopt; }
+ ;
+
+opt_on_commit:
+    ON COMMIT DELETE ROWS   { $$ = OnCommit::DELETE; }
+ |  ON COMMIT PRESERVE ROWS { $$ = OnCommit::PRESERVE; }
+ |  %empty		    { $$ = std::nullopt; }
  ;
 
 column_defs_and_constraints:
-    column_def "," column_defs_and_constraints			{ }
- |  table_constraint_def "," column_defs_and_constraints	{ }
- |  column_def							{ }
- |  table_constraint_def					{ }
+    column_def_and_constraint[elem] COMMA column_defs_and_constraints[vec]
+    { $vec.push_back(std::move($elem)); std::swap($vec, $$); }
+ |  column_def_and_constraint[elem]
+    { $$ = std::vector<std::variant<ColumnDef, TableConstraint>>(); $$.push_back(std::move($elem)); }
+ ;
+
+column_def_and_constraint:
+    column_def			{ $$ = std::move($column_def); }
+ |  table_constraint_def	{ $$ = std::move($table_constraint_def); }
  ;
 
 column_def:
