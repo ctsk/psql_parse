@@ -19,11 +19,16 @@ namespace psql_parse {
     class scanner : public yyFlexLexer {
         psql_parse::location loc;
 
+		/* STATE while lexing string literals */
+		std::string string_buffer;
+		StringLiteralType string_type;
+
+		void start_string(StringLiteralType type);
+
     public:
         explicit scanner(std::istream *in = nullptr, std::ostream *out = nullptr);
 
         virtual psql_parse::parser::symbol_type lex();
-
     };
 
 }

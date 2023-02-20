@@ -2,7 +2,18 @@ cmake_minimum_required(VERSION 3.24)
 project(psql_parse)
 
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -Wall -Wextra")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -Wall -Wextra -Wpedantic")
+
+add_compile_options(-fsanitize=undefined)
+add_link_options(-fsanitize=undefined)
+
+find_program(MOLD mold)
+find_program(LLD lld)
+if(MOLD)
+    add_compile_options(-fuse-ld=mold)
+elseif(LLD)
+    add_compile_options(-fuse-ld=lld)
+endif()
 
 #[============[
 # Dependencies
@@ -59,7 +70,13 @@ set(SOURCES
         ${FLEX_gen_scanner_OUTPUTS}
         ${BISON_gen_parser_OUTPUTS}
 
-        "${CMAKE_SOURCE_DIR}/src/driver.cpp" src/scanner.cpp test/test_utils.cpp)
+        "${CMAKE_SOURCE_DIR}/src/driver.cpp"
+        "${CMAKE_SOURCE_DIR}/src/scanner.cpp"
+
+        "${CMAKE_SOURCE_DIR}/src/ast/expr.cpp"
+        "${CMAKE_SOURCE_DIR}/src/ast/stmt.cpp"
+        "${CMAKE_SOURCE_DIR}/src/ast/common.cpp"
+        "${CMAKE_SOURCE_DIR}/src/ast/create.cpp")
 
 
 add_library(psql_parse ${SOURCES})
@@ -69,6 +86,7 @@ add_library(psql_parse ${SOURCES})
 #]=======]
 
 set(TEST_SOURCES
+        test/test_utils.cpp
         ${CMAKE_SOURCE_DIR}/test/tester.cpp)
 
 add_executable(runtests ${TEST_SOURCES})

@@ -5,6 +5,7 @@
 #include <optional>
 
 #include "psql_parse/scanner.hpp"
+#include "psql_parse/ast/expr.h"
 
 namespace psql_parse {
 
@@ -16,15 +17,15 @@ namespace psql_parse {
         bool trace_scanning_;
         bool trace_parsing_;
 
+        std::unique_ptr<Statement> result_;
 
-        [[maybe_unused]] void error(const psql_parse::location&, const std::string&);
+        [[maybe_unused]] static void error(const psql_parse::location&, const std::string&);
 
     public:
         driver();
 
-
-        std::vector<int> result_;
-
         bool parse(std::istream& in);
+
+        std::unique_ptr<Statement> getResult();
     };
 }
