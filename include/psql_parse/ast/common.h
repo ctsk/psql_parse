@@ -29,6 +29,10 @@ namespace psql_parse {
 	struct NationalVarCharType { uint64_t length; };
 	struct Bit { uint64_t length; };
 	struct VarBit { uint64_t length; };
+	struct DateType {};
+	struct TimeType { uint64_t precision; bool with_timezone; };
+	struct TimeStampType { uint64_t precision; bool with_timezone; };
+
 
 	using DataType = std::variant<
 			DecimalType,
@@ -43,7 +47,10 @@ namespace psql_parse {
 			NationalCharType,
 			NationalVarCharType,
 			Bit,
-			VarBit>;
+			VarBit,
+			DateType,
+			TimeType,
+			TimeStampType>;
 
 	using Name = std::string;
 

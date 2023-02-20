@@ -110,6 +110,7 @@ commit          { return psql_parse::parser::make_COMMIT(loc); }
 constraint      { return psql_parse::parser::make_CONSTRAINT(loc); }
 create          { return psql_parse::parser::make_CREATE(loc); }
 current_user    { return psql_parse::parser::make_CURRENT_USER(loc); }
+date            { return psql_parse::parser::make_DATE(loc); }
 decimal         { return psql_parse::parser::make_DECIMAL(loc); }
 dec             { return psql_parse::parser::make_DECIMAL(loc); }
 default         { return psql_parse::parser::make_DEFAULT(loc); }
@@ -143,11 +144,15 @@ smallint        { return psql_parse::parser::make_SMALLINT(loc); }
 system_user     { return psql_parse::parser::make_SYSTEM_USER(loc); }
 table           { return psql_parse::parser::make_TABLE(loc); }
 temporary       { return psql_parse::parser::make_TEMPORARY(loc); }
+timestamp       { return psql_parse::parser::make_TIMESTAMP(loc); }
+time            { return psql_parse::parser::make_TIME(loc); }
 unique          { return psql_parse::parser::make_UNIQUE(loc); }
 update          { return psql_parse::parser::make_UPDATE(loc); }
 user            { return psql_parse::parser::make_USER(loc); }
 varchar         { return psql_parse::parser::make_VARCHAR(loc); }
 varying         { return psql_parse::parser::make_VARYING(loc); }
+with            { return psql_parse::parser::make_WITH(loc); }
+zone            { return psql_parse::parser::make_ZONE(loc); }
 
 
 {identifier}    {

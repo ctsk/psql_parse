@@ -68,10 +68,13 @@ class driver;
 %token 			MINUS		"-"
 %token 			QUOTE		"'"
 
-%token 	ACTION BIT CASCADE CHARACTER COLLATE COMMIT CONSTRAINT CREATE CURRENT_USER DECIMAL DEFAULT DELETE DOUBLE FLOAT
-	FOREIGN FULL GLOBAL INTEGER KEY LOCAL MATCH NATIONAL NO NOT NCHAR NULL NUMERIC ON PARTIAL PRECISION PRESERVE
-	PRIMARY REAL REFERENCES ROWS SESSION_USER SET SMALLINT SYSTEM_USER TABLE TEMPORARY UNIQUE UPDATE USER VARCHAR
-	VARYING
+%token 	ACTION BIT CASCADE CHARACTER COLLATE COMMIT CONSTRAINT
+	CREATE CURRENT_USER DATE DECIMAL DEFAULT DELETE DOUBLE
+	FLOAT FOREIGN FULL GLOBAL INTEGER KEY LOCAL MATCH
+	NATIONAL NO NOT NCHAR NULL NUMERIC ON PARTIAL PRECISION
+	PRESERVE PRIMARY REAL REFERENCES ROWS SESSION_USER SET
+	SMALLINT SYSTEM_USER TABLE TEMPORARY TIMESTAMP TIME
+	UNIQUE UPDATE USER VARCHAR VARYING WITH ZONE
 
 %type <std::unique_ptr<psql_parse::Statement>>		pseudo_start
 %type <std::unique_ptr<psql_parse::Expression>>		numeric_literal
@@ -83,6 +86,9 @@ class driver;
 
 
 %type <DataType>					data_type
+%type <bool>						opt_with_time_zone
+%type <uint64_t>					opt_time_precision
+%type <uint64_t>					opt_timestamp_precision
 %type <std::optional<uint64_t>>				precision_spec
 %type <std::pair<std::optional<uint64_t>, uint64_t>>	precision_scale_spec
 %type <uint64_t>					opt_length_spec
@@ -176,6 +182,24 @@ data_type:
  |  NCHAR VARYING length_spec			{ $$ = NationalVarCharType { $length_spec }; }
  |  BIT opt_length_spec				{ $$ = Bit { $opt_length_spec }; }
  |  BIT VARYING length_spec			{ $$ = VarBit { $length_spec }; }
+ |  DATE					{ $$ = DateType { }; }
+ |  TIME opt_time_precision opt_with_time_zone			{ $$ = TimeType { $opt_time_precision, $opt_with_time_zone }; }
+ |  TIMESTAMP opt_timestamp_precision opt_with_time_zone	{ $$ = TimeType { $opt_timestamp_precision, $opt_with_time_zone }; }
+ ;
+
+opt_with_time_zone:
+    WITH TIME ZONE	{ $$ = true; }
+ |  %empty		{ $$ = false; }
+ ;
+
+opt_time_precision:
+    LP INTEGER_VALUE[time_precision] RP		{ $$ = $time_precision; }
+ |  %empty					{ $$ = 0; }
+ ;
+
+opt_timestamp_precision:
+    LP INTEGER_VALUE[timestamp_precision] RP	{ $$ = $timestamp_precision; }
+ |  %empty					{ $$ = 6; }
  ;
 
 precision_scale_spec:

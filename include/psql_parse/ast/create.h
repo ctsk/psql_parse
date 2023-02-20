@@ -28,8 +28,6 @@ namespace psql_parse {
 		NUL
 	};
 
-
-
 	enum class ReferentialAction {
 		CASCADE,
 		SET_NULL,
