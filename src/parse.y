@@ -270,7 +270,10 @@ column_def_and_constraint:
 
 column_def:
     IDENTIFIER[column_name] column_type opt_default_clause opt_column_constraint_def opt_collate_clause
-    { $$ = std::move(ColumnDef { $column_name, $column_type, std::move($opt_default_clause), std::move($opt_column_constraint_def), $opt_collate_clause}); }
+    { $$ = ColumnDef($column_name, $column_type);
+      $$.col_default = std::move($opt_default_clause);
+      $$.col_constraint = std::move($opt_column_constraint_def);
+      $$.collate = $opt_collate_clause; }
  ;
 
 column_type:

@@ -55,8 +55,8 @@ namespace psql_parse {
 	using Name = std::string;
 
 	struct QualifiedName {
-		std::optional<Name> catalog;
-		std::optional<Name> schema;
+		std::optional<Name> catalog = std::nullopt;
+		std::optional<Name> schema = std::nullopt;
 		Name name;
 		friend auto operator<=>(const QualifiedName&, const QualifiedName&) = default;
 	};

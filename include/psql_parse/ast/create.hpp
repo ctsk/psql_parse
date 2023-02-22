@@ -65,7 +65,7 @@ namespace psql_parse {
 
 	struct NamedColumnConstraint {
 		DEFAULT_SPACESHIP(NamedColumnConstraint);
-		std::optional<QualifiedName> name;
+		std::optional<QualifiedName> name = std::nullopt;
 		std::variant<
 				ConstraintType,
 				std::unique_ptr<References>> constraint;
@@ -79,6 +79,11 @@ namespace psql_parse {
 		std::optional<ColumnDefault> col_default;
 		std::vector<NamedColumnConstraint> col_constraint;
 		std::optional<QualifiedName> collate;
+
+		// required by bison
+		ColumnDef();
+
+		ColumnDef(Name name, std::variant<DataType, DomainName> type);
 	};
 
 	struct TableUniqueConstraint {
@@ -101,21 +106,15 @@ namespace psql_parse {
 
 	struct CreateStatement: public Statement {
 		QualifiedName rel_name;
-		std::optional<Temporary> temp;
-		std::optional<OnCommit> on_commit;
+		std::optional<Temporary> temp = std::nullopt;
+		std::optional<OnCommit> on_commit = std::nullopt;
 		std::vector<ColumnDef> column_defs;
 		std::vector<TableConstraint> table_constraints;
 
 		CreateStatement(location loc, QualifiedName relName);
 		CreateStatement(location loc, QualifiedName relName, std::optional<Temporary> temp, std::optional<OnCommit> onCommit, std::vector<std::variant<ColumnDef, TableConstraint>> elements);
 
-		bool equals(const CreateStatement& other) {
-			return other.rel_name == rel_name
-				   && other.temp == temp
-				   && other.on_commit == on_commit
-			       && column_defs == column_defs
-			       && table_constraints == table_constraints;
-		}
+		bool equals(const CreateStatement& other) const;
 	};
 }
 

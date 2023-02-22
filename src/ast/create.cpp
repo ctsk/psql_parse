@@ -29,5 +29,17 @@ namespace psql_parse {
 	, column_defs()
 	, table_constraints() { }
 
+	bool CreateStatement::equals(const CreateStatement &other) const {
+		return other.rel_name == rel_name
+			   && other.temp == temp
+			   && other.on_commit == on_commit
+			   && column_defs == column_defs
+			   && table_constraints == table_constraints;
+	}
 
+
+	ColumnDef::ColumnDef() = default;
+
+	ColumnDef::ColumnDef(Name name, std::variant<DataType, DomainName> type)
+			: name(std::move(name)), type(std::move(type)) {}
 }

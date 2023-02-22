@@ -62,10 +62,17 @@ TEST_CASE( "Create statements", "[create]") {
 	SECTION( "create table <relname> " ) {
 		parse_string("create table boo ( foo INT )");
 
-		std::unique_ptr<psql_parse::Statement> resultStmt = driver.getResult();
-		auto result = static_cast<psql_parse::CreateStatement*>(resultStmt.get());
+		std::unique_ptr<Statement> resultStmt = driver.getResult();
+		auto result = static_cast<CreateStatement*>(resultStmt.get());
 
-		REQUIRE(result->rel_name.name == "boo");
+		CreateStatement expected(location(nullptr, 0, 0), QualifiedName {.name = "boo"});
+		ColumnDef columnDef(
+			"foo",
+			IntegerType { }
+		);
+
+		expected.column_defs.push_back(std::move(columnDef));
+		REQUIRE(expected.equals(*result));
 	}
 
 }
