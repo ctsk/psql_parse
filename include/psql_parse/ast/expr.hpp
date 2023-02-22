@@ -6,7 +6,10 @@
 
 namespace psql_parse {
     struct Expression: public Node {
+	protected:
 		explicit Expression(location loc);
+	public:
+		virtual	~Expression() = default;
 	};
 
 	struct NumberLiteral: public Expression {

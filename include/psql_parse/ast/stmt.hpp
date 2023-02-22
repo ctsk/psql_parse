@@ -7,11 +7,14 @@
 namespace psql_parse {
 
 	class Statement: public Node {
-	public:
+	protected:
 		explicit Statement(location loc);
+
+	public:
+		virtual ~Statement() = default;
 	};
 
-	class  ExprStatement: public Statement {
+	class ExprStatement: public Statement {
 		std::unique_ptr<Expression> expr;
 
 	public:

@@ -17,15 +17,15 @@ TEST_CASE( "Numbers are parsed", "[expr]" ) {
 		parse_string("192");
 
 		std::unique_ptr<psql_parse::Statement> resultStmt = driver.getResult();
-		auto result = static_cast<psql_parse::ExprStatement*>(resultStmt.get());
-		auto lit = static_cast<const psql_parse::IntegerLiteral*>(result->getExpr());
+		auto result = dynamic_cast<psql_parse::ExprStatement*>(resultStmt.get());
+		auto lit = dynamic_cast<const psql_parse::IntegerLiteral*>(result->getExpr());
 
         REQUIRE(lit->value == 192);
 
 		parse_string("0");
 		resultStmt = driver.getResult();
-		result = static_cast<psql_parse::ExprStatement*>(resultStmt.get());
-		lit = static_cast<const psql_parse::IntegerLiteral*>(result->getExpr());
+		result = dynamic_cast<psql_parse::ExprStatement*>(resultStmt.get());
+		lit = dynamic_cast<const psql_parse::IntegerLiteral*>(result->getExpr());
 
 		REQUIRE(lit->value == 0);
     }
@@ -34,8 +34,8 @@ TEST_CASE( "Numbers are parsed", "[expr]" ) {
         parse_string("192.");
 
 		std::unique_ptr<psql_parse::Statement> resultStmt = driver.getResult();
-		auto result = static_cast<psql_parse::ExprStatement*>(resultStmt.get());
-		auto lit = static_cast<const psql_parse::FloatLiteral*>(result->getExpr());
+		auto result = dynamic_cast<psql_parse::ExprStatement*>(resultStmt.get());
+		auto lit = dynamic_cast<const psql_parse::FloatLiteral*>(result->getExpr());
 
 		REQUIRE(lit->value == 192.0);
     }
@@ -59,7 +59,7 @@ TEST_CASE( "Create statements", "[create]") {
 		parse_string("create table boo ( foo INT )");
 
 		std::unique_ptr<Statement> resultStmt = driver.getResult();
-		auto result = static_cast<CreateStatement*>(resultStmt.get());
+		auto result = dynamic_cast<CreateStatement*>(resultStmt.get());
 
 		CreateStatement expected(location(nullptr, 0, 0), QualifiedName {.name = "boo"});
 		ColumnDef columnDef(
