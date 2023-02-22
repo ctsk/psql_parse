@@ -96,7 +96,6 @@ class driver;
 %type <uint64_t>					length_spec
 
 %type <std::vector<Name>>				identifier_list
-%type <std::vector<Name>>				opt_identifier_list
 %type <QualifiedName>					qualified_name
 %type <std::optional<Temporary>>			opt_temporary
 %type <std::optional<OnCommit>>				opt_on_commit
@@ -222,19 +221,9 @@ opt_length_spec:
 
 length_spec: LP INTEGER_VALUE RP { $$ = $INTEGER_VALUE; };
 
-integer_list:
-    INTEGER_VALUE COMMA integer_list
- |  INTEGER_VALUE
- ;
-
 /*
  *   Handling Identifiers
  */
-
-opt_identifier_list:
-    identifier_list	{ std::swap($$, $identifier_list); }
- |  %empty		{ $$ = std::vector<Name>(); }
- ;
 
 identifier_list:
     IDENTIFIER[elem] COMMA identifier_list[vec]	{ $vec.push_back(std::move($elem)); std::swap($$, $vec); }
