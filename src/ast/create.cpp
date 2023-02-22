@@ -24,4 +24,14 @@ namespace psql_parse {
 			}
 		}
 	}
+
+	CreateStatement::CreateStatement(location loc, QualifiedName relName)
+	: Statement(loc)
+	, rel_name(std::move(relName))
+	, temp(std::nullopt)
+	, on_commit(std::nullopt)
+	, column_defs()
+	, table_constraints() { }
+
+
 }

@@ -97,6 +97,7 @@ namespace psql_parse {
 		std::vector<ColumnDef> column_defs;
 		std::vector<TableConstraint> table_constraints;
 
+		CreateStatement(location loc, QualifiedName relName);
 		CreateStatement(location loc, QualifiedName relName, std::optional<Temporary> temp, std::optional<OnCommit> onCommit, std::vector<std::variant<ColumnDef, TableConstraint>> elements);
 	};
 }
