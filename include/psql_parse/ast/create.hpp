@@ -64,6 +64,7 @@ namespace psql_parse {
 			std::unique_ptr<References>>;
 
 	struct NamedColumnConstraint {
+		DEFAULT_SPACESHIP(NamedColumnConstraint);
 		std::optional<QualifiedName> name;
 		std::variant<
 				ConstraintType,
@@ -71,6 +72,8 @@ namespace psql_parse {
 	};
 
 	struct ColumnDef {
+		DEFAULT_SPACESHIP(ColumnDef);
+
 		Name name;
 		std::variant<DataType, DomainName> type;
 		std::optional<ColumnDefault> col_default;
@@ -78,9 +81,18 @@ namespace psql_parse {
 		std::optional<QualifiedName> collate;
 	};
 
-	struct TableUniqueConstraint { std::vector<Name> column_names; };
-	struct TablePrimaryKeyConstraint { std::vector<Name> column_names; };
-	struct TableForeignKeyConstraint { std::vector<Name> column_names; std::unique_ptr<References> references; };
+	struct TableUniqueConstraint {
+		DEFAULT_SPACESHIP(TableUniqueConstraint);
+		std::vector<Name> column_names;
+	};
+	struct TablePrimaryKeyConstraint {
+		DEFAULT_SPACESHIP(TablePrimaryKeyConstraint);
+		std::vector<Name> column_names;
+	};
+	struct TableForeignKeyConstraint {
+		DEFAULT_SPACESHIP(TableForeignKeyConstraint);
+		std::vector<Name> column_names; std::unique_ptr<References> references;
+	};
 
 	using TableConstraint = std::variant<
 			TableUniqueConstraint,
@@ -96,6 +108,14 @@ namespace psql_parse {
 
 		CreateStatement(location loc, QualifiedName relName);
 		CreateStatement(location loc, QualifiedName relName, std::optional<Temporary> temp, std::optional<OnCommit> onCommit, std::vector<std::variant<ColumnDef, TableConstraint>> elements);
+
+		bool equals(const CreateStatement& other) {
+			return other.rel_name == rel_name
+				   && other.temp == temp
+				   && other.on_commit == on_commit
+			       && column_defs == column_defs
+			       && table_constraints == table_constraints;
+		}
 	};
 }
 

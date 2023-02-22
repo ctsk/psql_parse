@@ -13,22 +13,25 @@ namespace psql_parse {
 		const location loc;
 	};
 
-	struct DecimalType { std::optional<uint64_t> precision, scale; };
-	struct FloatType { std::optional<uint64_t> precision; };
-	struct IntegerType {};
-	struct NumericType { std::optional<uint64_t> precision, scale; };
-	struct SmallIntType {};
-	struct RealType {};
-	struct DoublePrecisionType {};
-	struct CharType { uint64_t length; };
-	struct VarCharType { uint64_t length; };
-	struct NationalCharType { uint64_t length; };
-	struct NationalVarCharType { uint64_t length; };
-	struct Bit { uint64_t length; };
-	struct VarBit { uint64_t length; };
-	struct DateType {};
-	struct TimeType { uint64_t precision; bool with_timezone; };
-	struct TimeStampType { uint64_t precision; bool with_timezone; };
+#define DEFAULT_SPACESHIP(Type) \
+	friend auto operator<=>(const Type&, const Type&) = default
+
+	struct DecimalType { std::optional<uint64_t> precision, scale; DEFAULT_SPACESHIP(DecimalType); };
+	struct FloatType { std::optional<uint64_t> precision; DEFAULT_SPACESHIP(FloatType); };
+	struct IntegerType { DEFAULT_SPACESHIP(IntegerType); };
+	struct NumericType { std::optional<uint64_t> precision, scale;DEFAULT_SPACESHIP(NumericType); };
+	struct SmallIntType { DEFAULT_SPACESHIP(SmallIntType); };
+	struct RealType {DEFAULT_SPACESHIP(RealType); };
+	struct DoublePrecisionType {DEFAULT_SPACESHIP(DoublePrecisionType); };
+	struct CharType { uint64_t length; DEFAULT_SPACESHIP(CharType); };
+	struct VarCharType { uint64_t length; DEFAULT_SPACESHIP(VarCharType); };
+	struct NationalCharType { uint64_t length; DEFAULT_SPACESHIP(NationalCharType); };
+	struct NationalVarCharType { uint64_t length; DEFAULT_SPACESHIP(NationalVarCharType); };
+	struct Bit { uint64_t length; DEFAULT_SPACESHIP(Bit); };
+	struct VarBit { uint64_t length; DEFAULT_SPACESHIP(VarBit); };
+	struct DateType {DEFAULT_SPACESHIP(DateType); };
+	struct TimeType { uint64_t precision; bool with_timezone; DEFAULT_SPACESHIP(TimeType); };
+	struct TimeStampType { uint64_t precision; bool with_timezone; DEFAULT_SPACESHIP(TimeStampType); };
 
 
 	using DataType = std::variant<
@@ -55,6 +58,7 @@ namespace psql_parse {
 		std::optional<Name> catalog;
 		std::optional<Name> schema;
 		Name name;
+		friend auto operator<=>(const QualifiedName&, const QualifiedName&) = default;
 	};
 
 	using DomainName = QualifiedName;

@@ -46,12 +46,18 @@ TEST_CASE( "Numbers are parsed", "[expr]" ) {
 }
 
 TEST_CASE( "Create statements", "[create]") {
-	psql_parse::driver driver;
+	using namespace psql_parse;
+	driver driver;
 
 	auto parse_string = [&driver](std::string&& str) {
 		std::istringstream iss(str);
 		REQUIRE(driver.parse(iss));
 	};
+
+	CreateStatement c1(location(nullptr, 1, 2), QualifiedName {});
+	CreateStatement c2(location(nullptr, 10, 20), QualifiedName {});
+
+	REQUIRE(c1.equals(c2));
 
 	SECTION( "create table <relname> " ) {
 		parse_string("create table boo ( foo INT )");
