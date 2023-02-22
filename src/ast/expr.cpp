@@ -1,4 +1,4 @@
-#include "psql_parse/ast/expr.h"
+#include "psql_parse/ast/expr.hpp"
 
 psql_parse::Expression::Expression(psql_parse::location loc)
 : Node { loc } { }

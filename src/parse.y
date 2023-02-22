@@ -30,10 +30,10 @@
 #include <string>
 #include <vector>
 
-#include "psql_parse/ast/expr.h"
-#include "psql_parse/ast/stmt.h"
-#include "psql_parse/ast/common.h"
-#include "psql_parse/ast/create.h"
+#include "psql_parse/ast/expr.hpp"
+#include "psql_parse/ast/stmt.hpp"
+#include "psql_parse/ast/common.hpp"
+#include "psql_parse/ast/create.hpp"
 
 namespace psql_parse {
 class driver;

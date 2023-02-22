@@ -1,4 +1,4 @@
-#include "psql_parse/ast/stmt.h"
+#include "psql_parse/ast/stmt.hpp"
 
 namespace psql_parse {
 

@@ -1,6 +1,6 @@
 #include <string>
 
-#include "psql_parse/ast/create.h"
+#include "psql_parse/ast/create.hpp"
 
 namespace psql_parse {
 

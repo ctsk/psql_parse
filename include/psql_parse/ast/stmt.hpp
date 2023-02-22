@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "expr.h"
+#include "expr.hpp"
 
 namespace psql_parse {
 

@@ -1,7 +1,8 @@
 #pragma once
 
 #include <cstdint>
-#include "common.h"
+
+#include "common.hpp"
 
 namespace psql_parse {
     struct Expression: public Node {
