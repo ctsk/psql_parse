@@ -1,7 +1,3 @@
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "cppcoreguidelines-pro-type-static-cast-downcast"
-
-
 #include <sstream>
 
 #include "catch2/catch_test_macros.hpp"
