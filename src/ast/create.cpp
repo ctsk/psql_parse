@@ -1,7 +1,3 @@
-//
-// Created by christian on 17.02.23.
-//
-
 #include <string>
 
 #include "psql_parse/ast/create.h"

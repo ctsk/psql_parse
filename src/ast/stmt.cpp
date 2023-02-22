@@ -1,7 +1,3 @@
-//
-// Created by christian on 17.02.23.
-//
-
 #include "psql_parse/ast/stmt.h"
 
 namespace psql_parse {
