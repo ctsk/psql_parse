@@ -8,8 +8,14 @@ namespace psql_parse {
 		return false;
 	}
 
-	NumberLiteral::NumberLiteral(location loc)
+	ValueExpression::ValueExpression(location loc)
 	: Expression(loc) {}
+
+	SetExpression::SetExpression(location loc)
+	: Expression(loc) {}
+
+	NumberLiteral::NumberLiteral(location loc)
+	: ValueExpression(loc) {}
 
 	IntegerLiteral::IntegerLiteral(location loc, int64_t value)
 	: NumberLiteral(loc), value(value) {}
@@ -26,5 +32,6 @@ namespace psql_parse {
 	}
 
 	StringLiteral::StringLiteral(location loc, std::string &&value, StringLiteralType type)
-	: Expression(loc), value(value), type(type) {}
+	: ValueExpression(loc), value(value), type(type) {}
+
 }

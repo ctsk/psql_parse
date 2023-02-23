@@ -5,15 +5,29 @@
 #include "common.hpp"
 
 namespace psql_parse {
+
     struct Expression: public Node {
-	protected:
-		explicit Expression(location loc);
-	public:
 		virtual	~Expression() = default;
 		friend bool operator==(const Expression&, const Expression&);
+
+	protected:
+		explicit Expression(location loc);
 	};
 
-	struct NumberLiteral: public Expression {
+
+	/// ValueExpression: Expression kinds, whose result is a value;
+	struct ValueExpression: public Expression {
+	protected:
+		explicit ValueExpression(location loc);
+	};
+
+	/// SetExpression: Expression kinds, whose result is a Bag of Tuples
+	struct SetExpression: public Expression {
+	protected:
+		explicit SetExpression(location loc);
+	};
+
+	struct NumberLiteral: public ValueExpression {
 		explicit NumberLiteral(location loc);
 		virtual void negate() = 0;
 	};
@@ -30,13 +44,13 @@ namespace psql_parse {
 		void negate() override;
 	};
 
-	struct StringLiteral: public Expression {
+	struct StringLiteral: public ValueExpression {
 		std::string value;
 		StringLiteralType type;
 		StringLiteral(location loc, std::string&& value, StringLiteralType type);
 	};
 
-	struct UnaryOp: public Expression {
+	struct UnaryOp: public ValueExpression {
 		enum class Op {
 			NOT
 		};
@@ -44,7 +58,7 @@ namespace psql_parse {
 		box<Expression> inner;
 	};
 
-	struct BinaryOp: public Expression {
+	struct BinaryOp: public ValueExpression {
 		enum class Op {
 			OR,
 			AND

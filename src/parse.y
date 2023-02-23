@@ -387,6 +387,12 @@ table_constraint_def:
 /* |  check_constraint_definition */
  ;
 
+/*
+ *  Expressions
+ */
+
+
+
 %%
 
 void psql_parse::parser::error(const location_type& l, const std::string& m)
