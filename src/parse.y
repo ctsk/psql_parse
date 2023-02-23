@@ -48,6 +48,8 @@ class driver;
 #undef yylex
 #define yylex driver.scanner_->lex
 
+using std::move;
+
 }
 
 %token END 0 "end of file"
@@ -68,22 +70,22 @@ class driver;
 %token 			MINUS		"-"
 %token 			QUOTE		"'"
 
-%token 	ACTION BIT CASCADE CHARACTER COLLATE COMMIT CONSTRAINT
+%token 	ACTION AND BIT CASCADE CHARACTER COLLATE COMMIT CONSTRAINT
 	CREATE CURRENT_USER DATE DECIMAL DEFAULT DELETE DOUBLE
 	FLOAT FOREIGN FULL GLOBAL INTEGER KEY LOCAL MATCH
-	NATIONAL NO NOT NCHAR NULL NUMERIC ON PARTIAL PRECISION
+	NATIONAL NO NOT NCHAR NULL NUMERIC ON OR PARTIAL PRECISION
 	PRESERVE PRIMARY REAL REFERENCES ROWS SESSION_USER SET
 	SMALLINT SYSTEM_USER TABLE TEMPORARY TIMESTAMP TIME
 	UNIQUE UPDATE USER VARCHAR VARYING WITH ZONE
 
-%type <std::unique_ptr<psql_parse::Statement>>		pseudo_start
-%type <std::unique_ptr<psql_parse::NumberLiteral>>	numeric_literal
-%type <std::unique_ptr<psql_parse::NumberLiteral>>	signed_numeric_literal
-%type <std::unique_ptr<psql_parse::NumberLiteral>>	unsigned_numeric_literal
-%type <std::unique_ptr<psql_parse::StringLiteral>>	general_literal
-%type <std::unique_ptr<psql_parse::Expression>>		literal
-%type <std::unique_ptr<psql_parse::Statement>>		ExprStatement
-%type <std::unique_ptr<psql_parse::Statement>>		CreateStatement
+%type <std::unique_ptr<Statement>>		pseudo_start
+%type <std::unique_ptr<ValExpr>>		numeric_literal
+%type <std::unique_ptr<ValExpr>>		signed_numeric_literal
+%type <std::unique_ptr<ValExpr>>		unsigned_numeric_literal
+%type <std::unique_ptr<StringLiteral>>		general_literal
+%type <std::unique_ptr<ValExpr>>		literal
+%type <std::unique_ptr<Statement>>		ExprStatement
+%type <std::unique_ptr<Statement>>		CreateStatement
 
 
 %type <DataType>					data_type
@@ -123,6 +125,9 @@ class driver;
 %type <std::optional<QualifiedName>>			opt_collate_clause
 %type <TableConstraint>					table_constraint_def
 
+%type <std::unique_ptr<Expression>>			expr
+%type <std::unique_ptr<ValExpr>>			value_expr
+
 
 %%
 
@@ -133,9 +138,7 @@ pseudo_start:
  |  CreateStatement	{ std::swap($CreateStatement, driver.result_); }
  ;
 
-ExprStatement:
-    numeric_literal	{ $$ = std::make_unique<ExprStatement>(@$, std::move($numeric_literal)); }
-    ;
+ExprStatement: expr	{ $$ = std::make_unique<ExprStatement>(@$, std::move($expr)); } ;
 
 /*
  *   Basics building blocks
@@ -152,7 +155,7 @@ numeric_literal:
 
 signed_numeric_literal:
     PLUS unsigned_numeric_literal	{ std::swap($$, $unsigned_numeric_literal); }
- |  MINUS unsigned_numeric_literal	{ $unsigned_numeric_literal->negate(); std::swap($$, $unsigned_numeric_literal); }
+ |  MINUS unsigned_numeric_literal	{ $$ = std::make_unique<UnaryOp>(@$, UnaryOp::Op::NEG, std::move($unsigned_numeric_literal)); }
  ;
 
 unsigned_numeric_literal:
@@ -390,6 +393,20 @@ table_constraint_def:
 /*
  *  Expressions
  */
+
+ expr:
+     value_expr		{ $$ = move($1); }
+  ;
+
+ value_expr:
+     literal						{ $$ = move($1); }
+  |  value_expr[left] OR  value_expr[right]		{ $$ = std::make_unique<BinaryOp>(@$, move($left), BinaryOp::Op::OR, move($right)); }
+  |  value_expr[left] AND  value_expr[right]		{ $$ = std::make_unique<BinaryOp>(@$, move($left), BinaryOp::Op::AND, move($right)); }
+  |  value_expr[left] PLUS  value_expr[right]		{ $$ = std::make_unique<BinaryOp>(@$, move($left), BinaryOp::Op::ADD, move($right)); }
+  |  value_expr[left] MINUS value_expr[right]		{ $$ = std::make_unique<BinaryOp>(@$, move($left), BinaryOp::Op::SUB, move($right)); }
+  ;
+
+truth_value:
 
 
 

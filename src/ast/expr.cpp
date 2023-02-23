@@ -8,30 +8,28 @@ namespace psql_parse {
 		return false;
 	}
 
-	ValueExpression::ValueExpression(location loc)
+	ValExpr::ValExpr(location loc)
 	: Expression(loc) {}
 
 	SetExpression::SetExpression(location loc)
 	: Expression(loc) {}
 
-	NumberLiteral::NumberLiteral(location loc)
-	: ValueExpression(loc) {}
-
 	IntegerLiteral::IntegerLiteral(location loc, int64_t value)
-	: NumberLiteral(loc), value(value) {}
-
-	void IntegerLiteral::negate() {
-		this->value *= -1;
-	}
+	: ValExpr(loc), value(value) {}
 
 	FloatLiteral::FloatLiteral(location loc, double value)
-	: NumberLiteral(loc), value(value) {}
-
-	void FloatLiteral::negate() {
-		this->value *= -1;
-	}
+	: ValExpr(loc), value(value) {}
 
 	StringLiteral::StringLiteral(location loc, std::string &&value, StringLiteralType type)
-	: ValueExpression(loc), value(value), type(type) {}
+	: ValExpr(loc), value(value), type(type) {}
+
+	UnaryOp::UnaryOp(location loc, UnaryOp::Op op, std::unique_ptr<ValExpr> inner)
+	: ValExpr(loc), op(op), inner(std::move(inner)) {}
+
+	BinaryOp::BinaryOp(location loc, std::unique_ptr<ValExpr> left, BinaryOp::Op op, std::unique_ptr<ValExpr> right)
+	: ValExpr(loc), op(op), left(std::move(left)), right(std::move(right)) {}
+
+	IsExpr::IsExpr(location loc, std::unique_ptr<ValExpr> expr, BoolLiteral lit)
+	: ValExpr(loc), expr(std::move(expr)), lit(lit) {}
 
 }

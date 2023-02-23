@@ -15,10 +15,10 @@ namespace psql_parse {
 	};
 
 
-	/// ValueExpression: Expression kinds, whose result is a value;
-	struct ValueExpression: public Expression {
+	/// ValExpr: Expression kinds, whose result is a value;
+	struct ValExpr: public Expression {
 	protected:
-		explicit ValueExpression(location loc);
+		explicit ValExpr(location loc);
 	};
 
 	/// SetExpression: Expression kinds, whose result is a Bag of Tuples
@@ -27,44 +27,59 @@ namespace psql_parse {
 		explicit SetExpression(location loc);
 	};
 
-	struct NumberLiteral: public ValueExpression {
-		explicit NumberLiteral(location loc);
-		virtual void negate() = 0;
-	};
-
-    struct IntegerLiteral: public NumberLiteral {
+    struct IntegerLiteral: public ValExpr {
 		std::int64_t value;
 		IntegerLiteral(location loc, std::int64_t value);
-		void negate() override;
 	};
 
-    struct FloatLiteral: public NumberLiteral {
+    struct FloatLiteral: public ValExpr {
         double value;
         FloatLiteral(location loc, double value);
-		void negate() override;
 	};
 
-	struct StringLiteral: public ValueExpression {
+	struct StringLiteral: public ValExpr {
 		std::string value;
 		StringLiteralType type;
 		StringLiteral(location loc, std::string&& value, StringLiteralType type);
 	};
 
-	struct UnaryOp: public ValueExpression {
-		enum class Op {
-			NOT
-		};
-
-		Expression *inner;
+	enum class BoolLiteral {
+		TRUE,
+		FALSE,
+		UNKNOWN
 	};
 
-	struct BinaryOp: public ValueExpression {
+	struct IsExpr: public ValExpr {
+		std::unique_ptr<ValExpr> expr;
+		BoolLiteral lit;
+
+		IsExpr(location loc, std::unique_ptr<ValExpr> expr, BoolLiteral lit);
+	};
+
+	struct UnaryOp: public ValExpr {
 		enum class Op {
-			OR,
-			AND
+			NOT,
+			NEG
 		};
 
-		Expression *left;
-		Expression *right;
+		Op op;
+		std::unique_ptr<ValExpr> inner;
+
+		UnaryOp(location loc, Op op, std::unique_ptr<ValExpr> inner);
+	};
+
+
+
+	struct BinaryOp: public ValExpr {
+		enum class Op {
+			OR, AND,
+			ADD, SUB, MULT, DIV
+		};
+
+		Op op;
+		std::unique_ptr<ValExpr> left;
+		std::unique_ptr<ValExpr> right;
+
+		BinaryOp(location loc, std::unique_ptr<ValExpr> left, Op op, std::unique_ptr<ValExpr> right);
 	};
 }

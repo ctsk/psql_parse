@@ -101,6 +101,7 @@ xhexstart       [xX]{quote}
 "-"             { return psql_parse::parser::make_MINUS(loc); }
 
 action          { return psql_parse::parser::make_ACTION(loc); }
+and             { return psql_parse::parser::make_AND(loc); }
 bit             { return psql_parse::parser::make_BIT(loc); }
 cascade         { return psql_parse::parser::make_CASCADE(loc); }
 character       { return psql_parse::parser::make_CHARACTER(loc); }
@@ -132,6 +133,7 @@ no              { return psql_parse::parser::make_NO(loc); }
 null            { return psql_parse::parser::make_NULL(loc); }
 numeric         { return psql_parse::parser::make_NUMERIC(loc); }
 on              { return psql_parse::parser::make_ON(loc); }
+or              { return psql_parse::parser::make_ON(loc); }
 partial         { return psql_parse::parser::make_PARTIAL(loc); }
 precision       { return psql_parse::parser::make_PRECISION(loc); }
 preserve        { return psql_parse::parser::make_PRESERVE(loc); }
