@@ -4,6 +4,10 @@ namespace psql_parse {
 	Expression::Expression(location loc)
 			: Node{loc} {}
 
+	bool operator==(const Expression &, const Expression &) {
+		return false;
+	}
+
 	NumberLiteral::NumberLiteral(location loc)
 			: Expression(loc) {}
 

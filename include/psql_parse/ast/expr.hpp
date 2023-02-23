@@ -10,6 +10,7 @@ namespace psql_parse {
 		explicit Expression(location loc);
 	public:
 		virtual	~Expression() = default;
+		friend bool operator==(const Expression&, const Expression&);
 	};
 
 	struct NumberLiteral: public Expression {
@@ -36,7 +37,20 @@ namespace psql_parse {
 	};
 
 	struct UnaryOp: public Expression {
-		std::unique_ptr<Expression> *inner;
+		enum class Op {
+			NOT
+		};
 
+		box<Expression> inner;
+	};
+
+	struct BinaryOp: public Expression {
+		enum class Op {
+			OR,
+			AND
+		};
+
+		box<Expression> left;
+		box<Expression> right;
 	};
 }
