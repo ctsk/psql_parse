@@ -32,8 +32,11 @@ namespace psql_parse {
 	struct StringLiteral: public Expression {
 		std::string value;
 		StringLiteralType type;
-
 		StringLiteral(location loc, std::string&& value, StringLiteralType type);
 	};
 
+	struct UnaryOp: public Expression {
+		std::unique_ptr<Expression> *inner;
+
+	};
 }
