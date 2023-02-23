@@ -51,7 +51,7 @@ namespace psql_parse {
 
 		template <typename... Args>
 		static box<T> make(Args... args) {
-			return box(std::make_unique<T>(args...));
+			return box(std::make_unique<T>(std::forward<Args>(args)...));
 		}
 
 	};
