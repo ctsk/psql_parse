@@ -37,6 +37,7 @@ namespace psql_parse {
 	};
 
 	struct ReferentialTriggeredAction {
+		DEFAULT_SPACESHIP(ReferentialTriggeredAction);
 		ReferentialAction on_delete, on_update;
 	};
 
@@ -53,6 +54,8 @@ namespace psql_parse {
 	};
 
 	struct References {
+		DEFAULT_SPACESHIP(References);
+
 		QualifiedName rel_name;
 		std::vector<Name> col_names;
 		MatchOption match_type;
@@ -61,14 +64,14 @@ namespace psql_parse {
 
 	using ColumnConstraint = std::variant<
 			ConstraintType,
-			std::unique_ptr<References>>;
+			box<References>>;
 
 	struct NamedColumnConstraint {
 		DEFAULT_SPACESHIP(NamedColumnConstraint);
 		std::optional<QualifiedName> name = std::nullopt;
 		std::variant<
 				ConstraintType,
-				std::unique_ptr<References>> constraint;
+				box<References>> constraint;
 	};
 
 	struct ColumnDef {

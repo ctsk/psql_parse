@@ -17,9 +17,13 @@ namespace psql_parse {
 	class box {
 		std::unique_ptr<T> ref;
 
+	protected:
+
 	public:
 		box(): ref(nullptr) {}
 		box(T&& inner): ref(new T(std::move(inner))) {}
+		box(T* inner): ref(inner) {}
+		box(std::unique_ptr<T>&& ptr): ref(std::move(ptr)) {}
 		box(const T& inner): ref(new T(inner)) {}
 		box(const box& other): box(*other.ref) {}
 		box(box<T>&& other) noexcept: ref(std::move(other.ref)) {}
@@ -37,8 +41,17 @@ namespace psql_parse {
 		T *operator->() { return ref.get(); }
 		const T *operator->() const { return ref.get(); }
 
+		friend auto operator==(const box<T>& l, const box<T> r) {
+			return *(l.ref) == *(r.ref);
+		}
+
 		friend auto operator<=>(const box<T>& l, const box<T> r) {
 			return *(l.ref) <=> *(r.ref);
+		}
+
+		template <typename... Args>
+		static box<T> make(Args... args) {
+			return box(std::make_unique<T>(args...));
 		}
 
 	};
