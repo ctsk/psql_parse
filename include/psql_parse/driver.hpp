@@ -17,7 +17,7 @@ namespace psql_parse {
         bool trace_scanning_;
         bool trace_parsing_;
 
-        std::unique_ptr<Statement> result_;
+		Statement* result_{};
 
         [[maybe_unused]] static void error(const psql_parse::location&, const std::string&);
 
@@ -26,6 +26,6 @@ namespace psql_parse {
 
         bool parse(std::istream& in);
 
-        std::unique_ptr<Statement> getResult();
+		Statement* getResult();
     };
 }

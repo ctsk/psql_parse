@@ -48,8 +48,6 @@ class driver;
 #undef yylex
 #define yylex driver.scanner_->lex
 
-using std::move;
-
 }
 
 %token END 0 "end of file"
@@ -78,14 +76,14 @@ using std::move;
 	SMALLINT SYSTEM_USER TABLE TEMPORARY TIMESTAMP TIME
 	UNIQUE UPDATE USER VARCHAR VARYING WITH ZONE
 
-%type <std::unique_ptr<Statement>>		pseudo_start
-%type <std::unique_ptr<ValExpr>>		numeric_literal
-%type <std::unique_ptr<ValExpr>>		signed_numeric_literal
-%type <std::unique_ptr<ValExpr>>		unsigned_numeric_literal
-%type <std::unique_ptr<StringLiteral>>		general_literal
-%type <std::unique_ptr<ValExpr>>		literal
-%type <std::unique_ptr<Statement>>		ExprStatement
-%type <std::unique_ptr<Statement>>		CreateStatement
+%type <Statement*>		pseudo_start
+%type <ValExpr*>		numeric_literal
+%type <ValExpr*>		signed_numeric_literal
+%type <ValExpr*>		unsigned_numeric_literal
+%type <StringLiteral*>		general_literal
+%type <ValExpr*>		literal
+%type <Statement*>		ExprStatement
+%type <Statement*>		CreateStatement
 
 
 %type <DataType>					data_type
@@ -113,7 +111,7 @@ using std::move;
 %type <NamedColumnConstraint>				column_constraint_def
 %type <std::optional<QualifiedName>>			opt_constraint_name
 %type <ColumnConstraint>				column_constraint
-%type <std::unique_ptr<References>>			references_spec
+%type <References*>					references_spec
 %type <std::pair<QualifiedName, std::vector<Name>>>	ref_table_cols
 %type <MatchOption>					opt_match
 %type <MatchOption>					match_type
@@ -125,8 +123,8 @@ using std::move;
 %type <std::optional<QualifiedName>>			opt_collate_clause
 %type <TableConstraint>					table_constraint_def
 
-%type <std::unique_ptr<Expression>>			expr
-%type <std::unique_ptr<ValExpr>>			value_expr
+%type <Expression*>					expr
+%type <ValExpr*>					value_expr
 
 
 %%
@@ -134,40 +132,35 @@ using std::move;
 %start pseudo_start;
 
 pseudo_start:
-    ExprStatement	{ std::swap($ExprStatement, driver.result_); }
- |  CreateStatement	{ std::swap($CreateStatement, driver.result_); }
+    ExprStatement	{ driver.result_ = $ExprStatement; }
+ |  CreateStatement	{ driver.result_ = $CreateStatement; }
  ;
 
-ExprStatement: expr	{ $$ = std::make_unique<ExprStatement>(@$, std::move($expr)); } ;
+ExprStatement: expr	{ $$ = new ExprStatement(@$, $expr); } ;
 
 /*
  *   Basics building blocks
  */
 
-literal:
-    numeric_literal		{ $$ = std::move($numeric_literal); }
- |  general_literal		{ $$ = std::move($general_literal); }
- ;
+literal: numeric_literal | general_literal ;
 
-numeric_literal:
-    signed_numeric_literal	{ $$ = std::move($signed_numeric_literal); }
- |  unsigned_numeric_literal	{ $$ = std::move($unsigned_numeric_literal); }
+numeric_literal: signed_numeric_literal	| unsigned_numeric_literal ;
 
 signed_numeric_literal:
-    PLUS unsigned_numeric_literal	{ std::swap($$, $unsigned_numeric_literal); }
- |  MINUS unsigned_numeric_literal	{ $$ = std::make_unique<UnaryOp>(@$, UnaryOp::Op::NEG, std::move($unsigned_numeric_literal)); }
+    PLUS unsigned_numeric_literal	{ $$ = $unsigned_numeric_literal; }
+ |  MINUS unsigned_numeric_literal	{ $$ = new UnaryOp(@$, UnaryOp::Op::NEG, $unsigned_numeric_literal); }
  ;
 
 unsigned_numeric_literal:
-    INTEGER_VALUE	{ $$ = std::make_unique<IntegerLiteral>(@INTEGER_VALUE, $INTEGER_VALUE); }
- |  FLOAT_VALUE		{ $$ = std::make_unique<FloatLiteral>(@FLOAT_VALUE, $FLOAT_VALUE); }
+    INTEGER_VALUE	{ $$ = new IntegerLiteral(@INTEGER_VALUE, $INTEGER_VALUE); }
+ |  FLOAT_VALUE		{ $$ = new FloatLiteral(@FLOAT_VALUE, $FLOAT_VALUE); }
  ;
 
 general_literal:
-    STRING_VALUE	{ $$ = std::make_unique<StringLiteral>(@STRING_VALUE, std::move($STRING_VALUE), StringLiteralType::CHAR); }
- |  BIT_VALUE		{ $$ = std::make_unique<StringLiteral>(@BIT_VALUE, std::move($BIT_VALUE), StringLiteralType::BIT); }
- |  HEX_VALUE		{ $$ = std::make_unique<StringLiteral>(@HEX_VALUE, std::move($HEX_VALUE), StringLiteralType::HEX); }
- |  NATIONAL_VALUE	{ $$ = std::make_unique<StringLiteral>(@NATIONAL_VALUE, std::move($NATIONAL_VALUE), StringLiteralType::NATIONAL); }
+    STRING_VALUE	{ $$ = new StringLiteral(@STRING_VALUE, std::move($STRING_VALUE), StringLiteralType::CHAR); }
+ |  BIT_VALUE		{ $$ = new StringLiteral(@BIT_VALUE, std::move($BIT_VALUE), StringLiteralType::BIT); }
+ |  HEX_VALUE		{ $$ = new StringLiteral(@HEX_VALUE, std::move($HEX_VALUE), StringLiteralType::HEX); }
+ |  NATIONAL_VALUE	{ $$ = new StringLiteral(@NATIONAL_VALUE, std::move($NATIONAL_VALUE), StringLiteralType::NATIONAL); }
 
 /* Missing: INTERVAL */
 data_type:
@@ -213,12 +206,12 @@ precision_scale_spec:
  ;
 
 precision_spec:
-    LP INTEGER_VALUE RP { $$ = $INTEGER_VALUE; }
+    LP INTEGER_VALUE RP
  |  %empty		{ $$ = std::nullopt; }
  ;
 
 opt_length_spec:
-    length_spec		{ $$ = $length_spec; }
+    length_spec
  |  %empty		{ $$ = 1; }
  ;
 
@@ -244,7 +237,7 @@ qualified_name:
  */
 CreateStatement:
     CREATE opt_temporary TABLE qualified_name[table_name] LP column_defs_and_constraints[table_elems] RP opt_on_commit
-    { $$ = std::make_unique<CreateStatement>(@$, $table_name, $opt_temporary, $opt_on_commit, std::move($table_elems)); }
+    { $$ = new CreateStatement(@$, $table_name, $opt_temporary, $opt_on_commit, std::move($table_elems)); }
     ;
 
 opt_temporary:
@@ -294,7 +287,7 @@ default_clause:
  ;
 
 default_option:
-   literal		{ $$ = std::move($1); }
+   literal		{ $$ = std::unique_ptr<Expression>($literal); }
  /*| datetime value function */
  |  USER		{ $$ = UserSpec::CURRENT_USER; }
  |  CURRENT_USER	{ $$ = UserSpec::CURRENT_USER; }
@@ -328,13 +321,13 @@ column_constraint:
     NOT NULL		{ $$ = ConstraintType::NOT_NULL; }
  |  UNIQUE		{ $$ = ConstraintType::UNIQUE; }
  |  PRIMARY KEY		{ $$ = ConstraintType::PRIMARY_KEY; }
- |  references_spec	{ $$ = std::move($references_spec); }
+ |  references_spec	{ $$ = std::unique_ptr<References>($references_spec); }
 /* |  check_constraint_def */
  ;
 
 references_spec:
     REFERENCES ref_table_cols opt_match opt_referential_triggered_action
-    { $$ = std::make_unique<References>($ref_table_cols.first, std::move($ref_table_cols.second), $opt_match, $opt_referential_triggered_action); }
+    { $$ = new References($ref_table_cols.first, std::move($ref_table_cols.second), $opt_match, $opt_referential_triggered_action); }
  ;
 
 ref_table_cols:
@@ -386,7 +379,7 @@ opt_collate_clause:
 table_constraint_def:
     UNIQUE LP identifier_list RP			{ $$ = TableUniqueConstraint($identifier_list); }
  |  PRIMARY KEY LP identifier_list RP			{ $$ = TablePrimaryKeyConstraint($identifier_list); }
- |  FOREIGN KEY LP identifier_list RP references_spec	{ $$ = TableForeignKeyConstraint($identifier_list, std::move($references_spec)); }
+ |  FOREIGN KEY LP identifier_list RP references_spec	{ $$ = TableForeignKeyConstraint($identifier_list, std::unique_ptr<References>($references_spec)); }
 /* |  check_constraint_definition */
  ;
 
@@ -394,21 +387,17 @@ table_constraint_def:
  *  Expressions
  */
 
- expr:
-     value_expr		{ $$ = move($1); }
+expr:
+     value_expr { $$ = $1; }
   ;
 
- value_expr:
-     literal						{ $$ = move($1); }
-  |  value_expr[left] OR  value_expr[right]		{ $$ = std::make_unique<BinaryOp>(@$, move($left), BinaryOp::Op::OR, move($right)); }
-  |  value_expr[left] AND  value_expr[right]		{ $$ = std::make_unique<BinaryOp>(@$, move($left), BinaryOp::Op::AND, move($right)); }
-  |  value_expr[left] PLUS  value_expr[right]		{ $$ = std::make_unique<BinaryOp>(@$, move($left), BinaryOp::Op::ADD, move($right)); }
-  |  value_expr[left] MINUS value_expr[right]		{ $$ = std::make_unique<BinaryOp>(@$, move($left), BinaryOp::Op::SUB, move($right)); }
+value_expr:
+     literal
+  |  value_expr[left] OR  value_expr[right]		{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::OR, $right); }
+  |  value_expr[left] AND  value_expr[right]		{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::AND, $right); }
+  |  value_expr[left] PLUS  value_expr[right]		{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::ADD, $right); }
+  |  value_expr[left] MINUS value_expr[right]		{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::SUB, $right); }
   ;
-
-truth_value:
-
-
 
 %%
 

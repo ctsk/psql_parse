@@ -18,7 +18,7 @@ namespace psql_parse {
 		std::unique_ptr<Expression> expr;
 
 	public:
-		ExprStatement(location loc, std::unique_ptr<Expression> expr);
+		ExprStatement(location loc, Expression* expr);
 
 		[[nodiscard]] const Expression* getExpr() const;
 	};

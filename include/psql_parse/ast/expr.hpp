@@ -65,7 +65,7 @@ namespace psql_parse {
 		Op op;
 		std::unique_ptr<ValExpr> inner;
 
-		UnaryOp(location loc, Op op, std::unique_ptr<ValExpr> inner);
+		UnaryOp(location loc, Op op, ValExpr *inner);
 	};
 
 
@@ -80,6 +80,6 @@ namespace psql_parse {
 		std::unique_ptr<ValExpr> left;
 		std::unique_ptr<ValExpr> right;
 
-		BinaryOp(location loc, std::unique_ptr<ValExpr> left, Op op, std::unique_ptr<ValExpr> right);
+		BinaryOp(location loc, ValExpr *left, Op op, ValExpr *right);
 	};
 }

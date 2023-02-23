@@ -23,11 +23,11 @@ namespace psql_parse {
 	StringLiteral::StringLiteral(location loc, std::string &&value, StringLiteralType type)
 	: ValExpr(loc), value(value), type(type) {}
 
-	UnaryOp::UnaryOp(location loc, UnaryOp::Op op, std::unique_ptr<ValExpr> inner)
-	: ValExpr(loc), op(op), inner(std::move(inner)) {}
+	UnaryOp::UnaryOp(location loc, UnaryOp::Op op, ValExpr *inner)
+	: ValExpr(loc), op(op), inner(inner) {}
 
-	BinaryOp::BinaryOp(location loc, std::unique_ptr<ValExpr> left, BinaryOp::Op op, std::unique_ptr<ValExpr> right)
-	: ValExpr(loc), op(op), left(std::move(left)), right(std::move(right)) {}
+	BinaryOp::BinaryOp(location loc, ValExpr *left, BinaryOp::Op op, ValExpr *right)
+	: ValExpr(loc), op(op), left(left), right(right) {}
 
 	IsExpr::IsExpr(location loc, std::unique_ptr<ValExpr> expr, BoolLiteral lit)
 	: ValExpr(loc), expr(std::move(expr)), lit(lit) {}

@@ -41,5 +41,5 @@ namespace psql_parse {
 	ColumnDef::ColumnDef() = default;
 
 	ColumnDef::ColumnDef(Name name, std::variant<DataType, DomainName> type)
-			: name(std::move(name)), type(std::move(type)) {}
+	: name(std::move(name)), type(std::move(type)) {}
 }
