@@ -13,49 +13,6 @@ namespace psql_parse {
 		const location loc;
 	};
 
-	template <typename T>
-	class box {
-		std::unique_ptr<T> ref;
-
-	protected:
-
-	public:
-		box(): ref(nullptr) {}
-		box(T&& inner): ref(new T(std::move(inner))) {}
-		box(T* inner): ref(inner) {}
-		box(std::unique_ptr<T>&& ptr): ref(std::move(ptr)) {}
-		box(const T& inner): ref(new T(inner)) {}
-		box(const box& other): box(*other.ref) {}
-		box(box<T>&& other) noexcept: ref(std::move(other.ref)) {}
-
-		box &operator=(const box &other) {
-			*ref = *other.ref;
-			return *this;
-		}
-
-		~box() = default;
-
-		T &operator*() { return *ref; };
-		const T &operator*() const { return *ref; };
-
-		T *operator->() { return ref.get(); }
-		const T *operator->() const { return ref.get(); }
-
-		friend auto operator==(const box<T>& l, const box<T> r) {
-			return *(l.ref) == *(r.ref);
-		}
-
-		friend auto operator<=>(const box<T>& l, const box<T> r) {
-			return *(l.ref) <=> *(r.ref);
-		}
-
-		template <typename... Args>
-		static box<T> make(Args... args) {
-			return box(std::make_unique<T>(std::forward<Args>(args)...));
-		}
-
-	};
-
 #define DEFAULT_SPACESHIP(Type) \
 	friend auto operator<=>(const Type&, const Type&) = default
 

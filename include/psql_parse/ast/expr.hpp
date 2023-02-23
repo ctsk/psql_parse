@@ -55,7 +55,7 @@ namespace psql_parse {
 			NOT
 		};
 
-		box<Expression> inner;
+		Expression *inner;
 	};
 
 	struct BinaryOp: public ValueExpression {
@@ -64,7 +64,7 @@ namespace psql_parse {
 			AND
 		};
 
-		box<Expression> left;
-		box<Expression> right;
+		Expression *left;
+		Expression *right;
 	};
 }

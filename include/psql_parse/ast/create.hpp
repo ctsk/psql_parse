@@ -64,14 +64,14 @@ namespace psql_parse {
 
 	using ColumnConstraint = std::variant<
 			ConstraintType,
-			box<References>>;
+			std::unique_ptr<References>>;
 
 	struct NamedColumnConstraint {
 		DEFAULT_SPACESHIP(NamedColumnConstraint);
 		std::optional<QualifiedName> name = std::nullopt;
 		std::variant<
 				ConstraintType,
-				box<References>> constraint;
+				std::unique_ptr<References>> constraint;
 	};
 
 	struct ColumnDef {
