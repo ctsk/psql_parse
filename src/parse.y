@@ -69,8 +69,8 @@ class driver;
 %token 			MINUS		"-"
 %token 			QUOTE		"'"
 
-%token 	ACTION AND BIT CASCADE CHARACTER COLLATE COMMIT CONSTRAINT
-	CREATE CURRENT_USER DATE DECIMAL DEFAULT DELETE DOUBLE
+%token 	ACTION ALL AND BIT CASCADE CHARACTER COLLATE COMMIT CONSTRAINT
+	CREATE CURRENT_USER DATE DECIMAL DEFAULT DELETE DISTINCT DOUBLE
 	FLOAT FOREIGN FULL GLOBAL INTEGER KEY LOCAL MATCH
 	NATIONAL NO NOT NCHAR NULL NUMERIC ON OR PARTIAL PRECISION
 	PRESERVE PRIMARY REAL REFERENCES ROWS SESSION_USER SET
@@ -133,6 +133,7 @@ class driver;
 %type <SelectStatement*>				select_no_parens
 %type <SelectStatement*>				select_with_parens
 %type <SelectStatement*>				simple_select
+%type <std::optional<SetQuantifier>>			opt_set_quantifier
 
 
 %%
@@ -430,8 +431,15 @@ select_no_parens:
  ;
 
 simple_select:
-    SELECT value_expr 		{ $$ = new SelectStatement(@$);
-    				  $$->target_list.emplace_back($value_expr); }
+    SELECT opt_set_quantifier value_expr 		{ $$ = new SelectStatement(@$);
+    						  	  $$->target_list.emplace_back($value_expr);
+    						  	  $$->set_quantifier = $opt_set_quantifier; }
+ ;
+
+opt_set_quantifier:
+    ALL		{ $$ = SetQuantifier::ALL; }
+ |  DISTINCT	{ $$ = SetQuantifier::DISTINCT; }
+ |  %empty	{ $$ = std::nullopt; }
  ;
 
 %%

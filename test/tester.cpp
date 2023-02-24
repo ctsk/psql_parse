@@ -70,5 +70,38 @@ TEST_CASE( "Create statements", "[create]") {
 		expected.column_defs.push_back(std::move(columnDef));
 		REQUIRE(expected.equals(*result));
 	}
+}
 
+TEST_CASE( "Select statements", "[select]") {
+	using namespace psql_parse;
+	driver driver;
+
+	auto parse_string = [&driver](std::string&& str) {
+		std::istringstream iss(str);
+		REQUIRE(driver.parse(iss));
+	};
+
+	SECTION( "select 1" ) {
+		parse_string("select 1");
+
+		auto resultStmt = driver.getResult();
+		auto result = dynamic_cast<SelectStatement*>(resultStmt);
+		REQUIRE(!result->set_quantifier.has_value());
+		REQUIRE(result->target_list.size() == 1);
+		auto expr = dynamic_cast<IntegerLiteral*>(result->target_list.at(0).get());
+		REQUIRE(expr->value == 1);
+	}
+
+	SECTION( "select [ALL|DISTINCT] 1" ) {
+		parse_string("select ALL 1");
+		auto resultStmt = driver.getResult();
+		auto result = dynamic_cast<SelectStatement*>(resultStmt);
+		REQUIRE(result->set_quantifier.value() == SetQuantifier::ALL);
+
+
+		parse_string("select DISTINCT 1");
+		resultStmt = driver.getResult();
+		result = dynamic_cast<SelectStatement*>(resultStmt);
+		REQUIRE(result->set_quantifier.value() == SetQuantifier::DISTINCT);
+	}
 }

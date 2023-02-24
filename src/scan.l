@@ -101,6 +101,7 @@ xhexstart       [xX]{quote}
 "-"             { return psql_parse::parser::make_MINUS(loc); }
 
 action          { return psql_parse::parser::make_ACTION(loc); }
+all             { return psql_parse::parser::make_ALL(loc); }
 and             { return psql_parse::parser::make_AND(loc); }
 bit             { return psql_parse::parser::make_BIT(loc); }
 cascade         { return psql_parse::parser::make_CASCADE(loc); }
@@ -116,6 +117,7 @@ decimal         { return psql_parse::parser::make_DECIMAL(loc); }
 dec             { return psql_parse::parser::make_DECIMAL(loc); }
 default         { return psql_parse::parser::make_DEFAULT(loc); }
 delete          { return psql_parse::parser::make_DELETE(loc); }
+distinct        { return psql_parse::parser::make_DISTINCT(loc); }
 double          { return psql_parse::parser::make_DOUBLE(loc); }
 float           { return psql_parse::parser::make_FLOAT(loc); }
 foreign         { return psql_parse::parser::make_FOREIGN(loc); }
