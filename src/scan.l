@@ -140,9 +140,9 @@ preserve        { return psql_parse::parser::make_PRESERVE(loc); }
 primary         { return psql_parse::parser::make_PRIMARY(loc); }
 real            { return psql_parse::parser::make_REAL(loc); }
 references      { return psql_parse::parser::make_REFERENCES(loc); }
-set             { return psql_parse::parser::make_SET(loc); }
+select          { return psql_parse::parser::make_SELECT(loc); }
 session_user    { return psql_parse::parser::make_SESSION_USER(loc); }
-smallint        { return psql_parse::parser::make_SMALLINT(loc); }
+set             { return psql_parse::parser::make_SET(loc); }
 system_user     { return psql_parse::parser::make_SYSTEM_USER(loc); }
 table           { return psql_parse::parser::make_TABLE(loc); }
 temporary       { return psql_parse::parser::make_TEMPORARY(loc); }

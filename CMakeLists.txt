@@ -76,7 +76,8 @@ set(SOURCES
 
         "${CMAKE_SOURCE_DIR}/src/ast/expr.cpp"
         "${CMAKE_SOURCE_DIR}/src/ast/stmt.cpp"
-        "${CMAKE_SOURCE_DIR}/src/ast/create.cpp")
+        "${CMAKE_SOURCE_DIR}/src/ast/create.cpp"
+        "${CMAKE_SOURCE_DIR}/src/ast/select.cpp")
 
 
 add_library(psql_parse ${SOURCES})

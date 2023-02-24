@@ -34,6 +34,7 @@
 #include "psql_parse/ast/stmt.hpp"
 #include "psql_parse/ast/common.hpp"
 #include "psql_parse/ast/create.hpp"
+#include "psql_parse/ast/select.hpp"
 
 namespace psql_parse {
 class driver;
@@ -73,7 +74,7 @@ class driver;
 	FLOAT FOREIGN FULL GLOBAL INTEGER KEY LOCAL MATCH
 	NATIONAL NO NOT NCHAR NULL NUMERIC ON OR PARTIAL PRECISION
 	PRESERVE PRIMARY REAL REFERENCES ROWS SESSION_USER SET
-	SMALLINT SYSTEM_USER TABLE TEMPORARY TIMESTAMP TIME
+	SMALLINT SELECT SYSTEM_USER TABLE TEMPORARY TIMESTAMP TIME
 	UNIQUE UPDATE USER VARCHAR VARYING WITH ZONE
 
 %left PLUS MINUS AND OR
@@ -128,6 +129,11 @@ class driver;
 %type <Expression*>					expr
 %type <ValExpr*>					value_expr
 
+%type <SelectStatement*>				SelectStatement
+%type <SelectStatement*>				select_no_parens
+%type <SelectStatement*>				select_with_parens
+%type <SelectStatement*>				simple_select
+
 
 %%
 
@@ -136,6 +142,7 @@ class driver;
 pseudo_start:
     ExprStatement	{ driver.result_ = $ExprStatement; }
  |  CreateStatement	{ driver.result_ = $CreateStatement; }
+ |  SelectStatement	{ driver.result_ = $SelectStatement; }
  ;
 
 ExprStatement: expr	{ $$ = new ExprStatement(@$, $expr); } ;
@@ -402,6 +409,30 @@ value_expr:
   ;
 
 
+/************
+ *          *
+ *  SELECT  *
+ *          *
+ ************/
+
+SelectStatement:
+    select_no_parens
+ |  select_with_parens
+ ;
+
+select_with_parens:
+    LP select_no_parens RP		{ $$ = $select_no_parens; }
+ |  LP select_with_parens[inner] RP	{ $$ = $inner; }
+ ;
+
+select_no_parens:
+    simple_select
+ ;
+
+simple_select:
+    SELECT value_expr 		{ $$ = new SelectStatement(@$);
+    				  $$->target_list.emplace_back($value_expr); }
+ ;
 
 %%
 
