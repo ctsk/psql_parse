@@ -73,14 +73,15 @@ class driver;
 %token 			QUOTE		"'"
 
 %token 	ACTION ALL AND AS BIT CASCADE CHARACTER COLLATE COMMIT CONSTRAINT
-	CREATE CURRENT_USER DATE DECIMAL DEFAULT DELETE DISTINCT DOUBLE
-	FLOAT FOREIGN FULL GLOBAL INTEGER KEY LOCAL MATCH
-	NATIONAL NO NOT NCHAR NULL NUMERIC ON OR PARTIAL PRECISION
-	PRESERVE PRIMARY REAL REFERENCES ROWS SESSION_USER SET
+	CREATE CROSS CURRENT_USER DATE DECIMAL DEFAULT DELETE DISTINCT DOUBLE
+	FLOAT FOREIGN FROM FULL GLOBAL INNER INTEGER JOIN KEY LEFT LOCAL MATCH
+	NATIONAL NATURAL NO NOT NCHAR NULL NUMERIC ON OR OUTER PARTIAL PRECISION
+	PRESERVE PRIMARY REAL REFERENCES RIGHT ROWS SESSION_USER SET
 	SMALLINT SELECT SYSTEM_USER TABLE TEMPORARY TIMESTAMP TIME
 	UNIQUE UPDATE USER VARCHAR VARYING WITH ZONE
 
 %left PLUS MINUS AND OR
+%left JOIN CROSS LEFT FULL RIGHT INNER NATURAL
 
 %type <Statement*>		pseudo_start
 %type <ValExpr*>		numeric_literal
@@ -140,6 +141,11 @@ class driver;
 
 %type <std::vector<std::unique_ptr<ValExpr>>>		target_list
 %type <ValExpr*>					target_element
+%type <std::vector<std::unique_ptr<RelExpr>>>		from_clause
+%type <std::vector<std::unique_ptr<RelExpr>>>		from_list
+%type <RelExpr*>					table_ref
+%type <JoinExpr*>					joined_table
+%type <JoinExpr::Kind>					join_type
 
 
 %%
@@ -438,9 +444,12 @@ select_no_parens:
 
 simple_select:
     SELECT opt_set_quantifier target_list 		{ $$ = new SelectStatement(@$);
-    							  std::reverse($target_list.begin(), $target_list.end());
     						  	  $$->target_list = std::move($target_list);
     						  	  $$->set_quantifier = $opt_set_quantifier; }
+ |  SELECT opt_set_quantifier target_list from_clause	{ $$ = new SelectStatement(@$);
+							  $$->target_list = std::move($target_list);
+							  $$->from_clause = std::move($from_clause);
+							  $$->set_quantifier = $opt_set_quantifier; }
  ;
 
 opt_set_quantifier:
@@ -460,8 +469,8 @@ opt_set_quantifier:
  *  MISSING: <qualified asterisk>
  */
 target_list:
-    target_element				{ $$ = std::vector<std::unique_ptr<ValExpr>>(); $$.emplace_back($target_element); }
- |  target_element COMMA target_list[list]	{ $list.emplace_back($target_element); std::swap($$, $list); }
+   target_element				{ $$ = std::vector<std::unique_ptr<ValExpr>>(); $$.emplace_back($target_element); }
+ | target_list[list] COMMA target_element	{ $list.emplace_back($target_element); std::swap($$, $list); }
  ;
 
 target_element:
@@ -469,6 +478,38 @@ target_element:
  |  value_expr AS IDENTIFIER[name]	{ $$ = new AliasExpr(@$, $name, $value_expr); }
  |  STAR  				{ $$ = nullptr; }
  ;
+
+from_clause:
+    FROM from_list			{ $$ = std::move($from_list); }
+ ;
+
+from_list:
+    table_ref				{ $$ = std::vector<std::unique_ptr<RelExpr>>(); $$.emplace_back($table_ref);}
+ |  from_list[list] COMMA table_ref	{ $list.emplace_back($table_ref); std::swap($$, $list); }
+ ;
+
+table_ref:
+    qualified_name[table_name]	{ $$ = new TableName(@$, $table_name); }
+ |  joined_table
+ ;
+
+joined_table:
+    LP joined_table RP 						{ $$ = $2; }
+ |  table_ref[a] CROSS JOIN table_ref[b]			{ $$ = new JoinExpr(@$, JoinExpr::Kind::INNER); }
+ |  table_ref[a] join_type JOIN table_ref[b]			{ $$ = new JoinExpr(@$, $join_type); }
+ |  table_ref[a] JOIN table_ref[b]				{ $$ = new JoinExpr(@$, JoinExpr::Kind::INNER); }
+ |  table_ref[a] NATURAL join_type JOIN table_ref[b]		{ $$ = new JoinExpr(@$, $join_type); $$->setNatural(); }
+ |  table_ref[a] NATURAL JOIN table_ref[b]			{ $$ = new JoinExpr(@$, JoinExpr::Kind::INNER); $$->setNatural(); }
+
+join_type:
+    FULL opt_outer	{ $$ = JoinExpr::Kind::FULL; }
+ |  LEFT opt_outer	{ $$ = JoinExpr::Kind::LEFT; }
+ |  RIGHT opt_outer	{ $$ = JoinExpr::Kind::RIGHT; }
+ |  INNER		{ $$ = JoinExpr::Kind::INNER; }
+ ;
+
+// outer is just noise
+opt_outer: OUTER | %empty ;
 
 %%
 

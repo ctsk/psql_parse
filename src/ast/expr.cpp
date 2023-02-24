@@ -11,7 +11,7 @@ namespace psql_parse {
 	ValExpr::ValExpr(location loc)
 	: Expression(loc) {}
 
-	SetExpression::SetExpression(location loc)
+	RelExpr::RelExpr(location loc)
 	: Expression(loc) {}
 
 	IntegerLiteral::IntegerLiteral(location loc, int64_t value)
@@ -33,7 +33,15 @@ namespace psql_parse {
 	: ValExpr(loc), expr(std::move(expr)), lit(lit) {}
 
 	AliasExpr::AliasExpr(location loc, std::string name, ValExpr *expr)
-	: ValExpr(loc), name(std::move(name)), expr(expr) {
+	: ValExpr(loc), name(std::move(name)), expr(expr) {}
 
+	JoinExpr::JoinExpr(location loc, JoinExpr::Kind kind)
+	: RelExpr(loc), kind(kind), natural(false) {}
+
+	void JoinExpr::setNatural() {
+		natural = true;
 	}
+
+	TableName::TableName(location loc, QualifiedName name)
+	: RelExpr(loc), name(std::move(name)) {}
 }

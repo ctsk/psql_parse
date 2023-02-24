@@ -28,10 +28,10 @@ namespace psql_parse {
 		AliasExpr(location loc, std::string name, ValExpr *expr);
 	};
 
-	/// SetExpression: Expression kinds, whose result is a Bag of Tuples
-	struct SetExpression: public Expression {
+	/// RelExpr: Expression kinds, whose result is a Bag of Tuples
+	struct RelExpr: public Expression {
 	protected:
-		explicit SetExpression(location loc);
+		explicit RelExpr(location loc);
 	};
 
     struct IntegerLiteral: public ValExpr {
@@ -75,8 +75,6 @@ namespace psql_parse {
 		UnaryOp(location loc, Op op, ValExpr *inner);
 	};
 
-
-
 	struct BinaryOp: public ValExpr {
 		enum class Op {
 			OR, AND,
@@ -88,5 +86,25 @@ namespace psql_parse {
 		std::unique_ptr<ValExpr> right;
 
 		BinaryOp(location loc, ValExpr *left, Op op, ValExpr *right);
+	};
+
+	struct TableName: public RelExpr {
+		QualifiedName name;
+		TableName(location loc, QualifiedName name);
+	};
+	struct JoinExpr: public RelExpr {
+		enum class Kind {
+			FULL,
+			LEFT,
+			RIGHT,
+			INNER
+		};
+
+		Kind kind;
+		bool natural;
+
+		JoinExpr(location loc, Kind kind);
+
+		void setNatural();
 	};
 }
