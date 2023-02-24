@@ -10,9 +10,12 @@ namespace psql_parse {
 	};
 
 	struct SelectStatement: public Statement {
+		/*
+		 * NOTE: nullptr = ASTERISK
+		 */
 		std::vector<std::unique_ptr<ValExpr>> target_list;
 		std::optional<SetQuantifier> set_quantifier;
 
-		SelectStatement(location loc);
+		explicit SelectStatement(location loc);
 	};
 }

@@ -99,6 +99,8 @@ xhexstart       [xX]{quote}
 ";"             { return psql_parse::parser::make_SEMICOLON(loc); }
 "+"             { return psql_parse::parser::make_PLUS(loc); }
 "-"             { return psql_parse::parser::make_MINUS(loc); }
+"/"             { return psql_parse::parser::make_SLASH(loc); }
+"*"             { return psql_parse::parser::make_STAR(loc); }
 
 action          { return psql_parse::parser::make_ACTION(loc); }
 all             { return psql_parse::parser::make_ALL(loc); }

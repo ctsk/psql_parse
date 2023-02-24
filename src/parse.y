@@ -27,6 +27,7 @@
 %code requires {
 
 #include <memory>
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -66,6 +67,8 @@ class driver;
 %token 			COMMA		","
 %token 			SEMICOLON	";"
 %token 			PLUS		"+"
+%token 			SLASH		"/"
+%token 			STAR		"*"
 %token 			MINUS		"-"
 %token 			QUOTE		"'"
 
@@ -134,6 +137,9 @@ class driver;
 %type <SelectStatement*>				select_with_parens
 %type <SelectStatement*>				simple_select
 %type <std::optional<SetQuantifier>>			opt_set_quantifier
+
+%type <std::vector<std::unique_ptr<ValExpr>>>		target_list
+%type <ValExpr*>					target_element
 
 
 %%
@@ -431,8 +437,9 @@ select_no_parens:
  ;
 
 simple_select:
-    SELECT opt_set_quantifier value_expr 		{ $$ = new SelectStatement(@$);
-    						  	  $$->target_list.emplace_back($value_expr);
+    SELECT opt_set_quantifier target_list 		{ $$ = new SelectStatement(@$);
+    							  std::reverse($target_list.begin(), $target_list.end());
+    						  	  $$->target_list = std::move($target_list);
     						  	  $$->set_quantifier = $opt_set_quantifier; }
  ;
 
@@ -440,6 +447,16 @@ opt_set_quantifier:
     ALL		{ $$ = SetQuantifier::ALL; }
  |  DISTINCT	{ $$ = SetQuantifier::DISTINCT; }
  |  %empty	{ $$ = std::nullopt; }
+ ;
+
+target_list:
+    target_element				{ $$ = std::vector<std::unique_ptr<ValExpr>>(); $$.emplace_back($target_element); }
+ |  target_element COMMA target_list[list]	{ $list.emplace_back($target_element); std::swap($$, $list); }
+ ;
+
+target_element:
+    value_expr
+ |  STAR  				{ $$ = nullptr; }
  ;
 
 %%

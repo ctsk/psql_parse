@@ -92,6 +92,29 @@ TEST_CASE( "Select statements", "[select]") {
 		REQUIRE(expr->value == 1);
 	}
 
+	SECTION( "select 1, 2" ) {
+		parse_string("select 1, 2");
+
+		auto resultStmt = driver.getResult();
+		auto result = dynamic_cast<SelectStatement*>(resultStmt);
+		REQUIRE(!result->set_quantifier.has_value());
+		REQUIRE(result->target_list.size() == 2);
+		auto expr1 = dynamic_cast<IntegerLiteral*>(result->target_list.at(0).get());
+		auto expr2 = dynamic_cast<IntegerLiteral*>(result->target_list.at(1).get());
+		REQUIRE(expr1->value == 1);
+		REQUIRE(expr2->value == 2);
+	}
+
+	SECTION( "select *" ) {
+		parse_string("select *");
+
+		auto resultStmt = driver.getResult();
+		auto result = dynamic_cast<SelectStatement*>(resultStmt);
+		REQUIRE(!result->set_quantifier.has_value());
+		REQUIRE(result->target_list.size() == 1);
+		REQUIRE(result->target_list.at(0) == nullptr);
+	}
+
 	SECTION( "select [ALL|DISTINCT] 1" ) {
 		parse_string("select ALL 1");
 		auto resultStmt = driver.getResult();
