@@ -32,4 +32,8 @@ namespace psql_parse {
 	IsExpr::IsExpr(location loc, std::unique_ptr<ValExpr> expr, BoolLiteral lit)
 	: ValExpr(loc), expr(std::move(expr)), lit(lit) {}
 
+	AliasExpr::AliasExpr(location loc, std::string name, ValExpr *expr)
+	: ValExpr(loc), name(std::move(name)), expr(expr) {
+
+	}
 }

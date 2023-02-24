@@ -105,6 +105,7 @@ xhexstart       [xX]{quote}
 action          { return psql_parse::parser::make_ACTION(loc); }
 all             { return psql_parse::parser::make_ALL(loc); }
 and             { return psql_parse::parser::make_AND(loc); }
+as              { return psql_parse::parser::make_AS(loc); }
 bit             { return psql_parse::parser::make_BIT(loc); }
 cascade         { return psql_parse::parser::make_CASCADE(loc); }
 character       { return psql_parse::parser::make_CHARACTER(loc); }

@@ -21,6 +21,13 @@ namespace psql_parse {
 		explicit ValExpr(location loc);
 	};
 
+	/// <expr> AS <name>
+	struct AliasExpr: public ValExpr {
+		Name name;
+		std::unique_ptr<ValExpr> expr;
+		AliasExpr(location loc, std::string name, ValExpr *expr);
+	};
+
 	/// SetExpression: Expression kinds, whose result is a Bag of Tuples
 	struct SetExpression: public Expression {
 	protected:
