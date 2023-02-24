@@ -449,6 +449,16 @@ opt_set_quantifier:
  |  %empty	{ $$ = std::nullopt; }
  ;
 
+/*
+ *  NOTE: target_list is a slight deviation from the standard:
+ *
+ *  This version allows
+ *     SELECT a, *, b FROM ....
+ *
+ *  whereas the standard doesn't allow any other targets if the asterisk is part of the target list.
+ *
+ *  MISSING: <qualified asterisk>
+ */
 target_list:
     target_element				{ $$ = std::vector<std::unique_ptr<ValExpr>>(); $$.emplace_back($target_element); }
  |  target_element COMMA target_list[list]	{ $list.emplace_back($target_element); std::swap($$, $list); }
