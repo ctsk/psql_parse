@@ -76,6 +76,8 @@ class driver;
 	SMALLINT SYSTEM_USER TABLE TEMPORARY TIMESTAMP TIME
 	UNIQUE UPDATE USER VARCHAR VARYING WITH ZONE
 
+%left PLUS MINUS AND OR
+
 %type <Statement*>		pseudo_start
 %type <ValExpr*>		numeric_literal
 %type <ValExpr*>		signed_numeric_literal
@@ -398,6 +400,8 @@ value_expr:
   |  value_expr[left] PLUS  value_expr[right]		{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::ADD, $right); }
   |  value_expr[left] MINUS value_expr[right]		{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::SUB, $right); }
   ;
+
+
 
 %%
 

@@ -55,7 +55,8 @@ set(SCAN_H "scan.h")
 set(PARSE_GRAMMAR "${CMAKE_SOURCE_DIR}/src/parse.y")
 set(PARSE_CC "${CMAKE_CURRENT_BINARY_DIR}/parse.cpp")
 
-bison_target(gen_parser ${PARSE_GRAMMAR} ${PARSE_CC})
+bison_target(gen_parser ${PARSE_GRAMMAR} ${PARSE_CC}
+             COMPILE_FLAGS "-Wcounterexamples")
 flex_target(gen_scanner ${SCAN_GRAMMAR} ${SCAN_CC})
 
 add_flex_bison_dependency(gen_scanner gen_parser)
