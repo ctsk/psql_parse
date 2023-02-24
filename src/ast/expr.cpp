@@ -35,11 +35,15 @@ namespace psql_parse {
 	AliasExpr::AliasExpr(location loc, std::string name, ValExpr *expr)
 	: ValExpr(loc), name(std::move(name)), expr(expr) {}
 
-	JoinExpr::JoinExpr(location loc, JoinExpr::Kind kind)
-	: RelExpr(loc), kind(kind), natural(false) {}
+	JoinExpr::JoinExpr(location loc, RelExpr *first, JoinExpr::Kind kind, RelExpr *second)
+	: RelExpr(loc), kind(kind), natural(false), first(first), second(second) {}
 
 	void JoinExpr::setNatural() {
 		natural = true;
+	}
+
+	void JoinExpr::setQualifier(ValExpr *expr) {
+		qualifier = std::unique_ptr<ValExpr>(expr);
 	}
 
 	TableName::TableName(location loc, QualifiedName name)

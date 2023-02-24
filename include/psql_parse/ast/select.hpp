@@ -13,7 +13,9 @@ namespace psql_parse {
 		/*
 		 * NOTE: nullptr = ASTERISK
 		 */
+		const ValExpr* ASTERISK = nullptr;
 		std::vector<std::unique_ptr<ValExpr>> target_list;
+
 		std::vector<std::unique_ptr<RelExpr>> from_clause;
 		std::optional<SetQuantifier> set_quantifier;
 

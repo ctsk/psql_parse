@@ -102,9 +102,14 @@ namespace psql_parse {
 
 		Kind kind;
 		bool natural;
+		std::unique_ptr<ValExpr> qualifier;
 
-		JoinExpr(location loc, Kind kind);
+		std::unique_ptr<RelExpr> first;
+		std::unique_ptr<RelExpr> second;
+
+		JoinExpr(location loc, RelExpr *first, Kind kind, RelExpr *second);
 
 		void setNatural();
+		void setQualifier(ValExpr *expr);
 	};
 }
