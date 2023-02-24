@@ -165,6 +165,7 @@ time            { return psql_parse::parser::make_TIME(loc); }
 unique          { return psql_parse::parser::make_UNIQUE(loc); }
 update          { return psql_parse::parser::make_UPDATE(loc); }
 user            { return psql_parse::parser::make_USER(loc); }
+using           { return psql_parse::parser::make_USING(loc); }
 varchar         { return psql_parse::parser::make_VARCHAR(loc); }
 varying         { return psql_parse::parser::make_VARYING(loc); }
 with            { return psql_parse::parser::make_WITH(loc); }

@@ -103,6 +103,7 @@ namespace psql_parse {
 		Kind kind;
 		bool natural;
 		std::unique_ptr<ValExpr> qualifier;
+		std::vector<Name> columns;
 
 		std::unique_ptr<RelExpr> first;
 		std::unique_ptr<RelExpr> second;

@@ -78,7 +78,7 @@ class driver;
 	NATIONAL NATURAL NO NOT NCHAR NULL NUMERIC ON OR OUTER PARTIAL PRECISION
 	PRESERVE PRIMARY REAL REFERENCES RIGHT ROWS SESSION_USER SET
 	SMALLINT SELECT SYSTEM_USER TABLE TEMPORARY TIMESTAMP TIME
-	UNIQUE UPDATE USER VARCHAR VARYING WITH ZONE
+	UNIQUE UPDATE USER USING VARCHAR VARYING WITH ZONE
 
 %left PLUS MINUS AND OR
 %left JOIN CROSS LEFT FULL RIGHT INNER NATURAL
@@ -146,7 +146,6 @@ class driver;
 %type <RelExpr*>					table_ref
 %type <JoinExpr*>					joined_table
 %type <JoinExpr::Kind>					join_type
-%type <ValExpr*>					join_qual
 
 
 %%
@@ -495,10 +494,16 @@ table_ref:
  ;
 
 joined_table:
-    LP joined_table RP 						{ $$ = $2; }
- |  table_ref[a] CROSS JOIN table_ref[b]			{ $$ = new JoinExpr(@$, $a, JoinExpr::Kind::INNER, $b); }
- |  table_ref[a] join_type JOIN table_ref[b] join_qual		{ $$ = new JoinExpr(@$, $a, $join_type, $b); $$->setQualifier($join_qual); }
- |  table_ref[a] JOIN table_ref[b] join_qual			{ $$ = new JoinExpr(@$, $a, JoinExpr::Kind::INNER, $b); $$->setQualifier($join_qual); }
+    LP joined_table RP 					{ $$ = $2; }
+ |  table_ref[a] CROSS JOIN table_ref[b]		{ $$ = new JoinExpr(@$, $a, JoinExpr::Kind::INNER, $b); }
+ |  table_ref[a] join_type JOIN table_ref[b] ON value_expr[join_qual]
+ 	{ $$ = new JoinExpr(@$, $a, $join_type, $b); $$->setQualifier($join_qual); }
+ |  table_ref[a] join_type JOIN table_ref[b] USING LP identifier_list[names] RP
+ 	{ $$ = new JoinExpr(@$, $a, $join_type, $b); $$->columns = std::move($names); }
+ |  table_ref[a] JOIN table_ref[b] ON value_expr[join_qual]
+ 	{ $$ = new JoinExpr(@$, $a, JoinExpr::Kind::INNER, $b); $$->setQualifier($join_qual); }
+ |  table_ref[a] JOIN table_ref[b] USING LP identifier_list[names] RP
+	{ $$ = new JoinExpr(@$, $a, JoinExpr::Kind::INNER, $b); $$->columns = std::move($names); }
  |  table_ref[a] NATURAL join_type JOIN table_ref[b]		{ $$ = new JoinExpr(@$, $a, $join_type, $b); $$->setNatural(); }
  |  table_ref[a] NATURAL JOIN table_ref[b]			{ $$ = new JoinExpr(@$, $a, JoinExpr::Kind::INNER, $b); $$->setNatural(); }
 
@@ -507,10 +512,6 @@ join_type:
  |  LEFT opt_outer	{ $$ = JoinExpr::Kind::LEFT; }
  |  RIGHT opt_outer	{ $$ = JoinExpr::Kind::RIGHT; }
  |  INNER		{ $$ = JoinExpr::Kind::INNER; }
- ;
-
-join_qual:
-    ON value_expr { $$ = $value_expr; }
  ;
 
 // outer is just noise
