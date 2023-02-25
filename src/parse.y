@@ -134,9 +134,9 @@ class driver;
 %type <ValExpr*>					value_expr
 
 %type <SelectStatement*>				SelectStatement
-%type <SelectStatement*>				select_no_parens
-%type <SelectStatement*>				select_with_parens
-%type <SelectStatement*>				simple_select
+%type <QueryExpr*>					select_no_parens
+%type <QueryExpr*>					select_with_parens
+%type <QueryExpr*>					simple_select
 %type <std::optional<SetQuantifier>>			opt_set_quantifier
 
 %type <std::vector<std::unique_ptr<ValExpr>>>		target_list
@@ -429,8 +429,8 @@ value_expr:
  ************/
 
 SelectStatement:
-    select_no_parens
- |  select_with_parens
+    select_no_parens	{ $$ = new SelectStatement($select_no_parens); }
+ |  select_with_parens	{ $$ = new SelectStatement($select_with_parens); }
  ;
 
 select_with_parens:
@@ -443,10 +443,10 @@ select_no_parens:
  ;
 
 simple_select:
-    SELECT opt_set_quantifier target_list 		{ $$ = new SelectStatement(@$);
+    SELECT opt_set_quantifier target_list 		{ $$ = new QueryExpr(@$);
     						  	  $$->target_list = std::move($target_list);
     						  	  $$->set_quantifier = $opt_set_quantifier; }
- |  SELECT opt_set_quantifier target_list from_clause	{ $$ = new SelectStatement(@$);
+ |  SELECT opt_set_quantifier target_list from_clause	{ $$ = new QueryExpr(@$);
 							  $$->target_list = std::move($target_list);
 							  $$->from_clause = std::move($from_clause);
 							  $$->set_quantifier = $opt_set_quantifier; }
@@ -488,9 +488,13 @@ from_list:
  |  from_list[list] COMMA table_ref	{ $list.emplace_back($table_ref); std::swap($$, $list); }
  ;
 
+/*
+ *  MISSING: alias_clause
+ */
 table_ref:
-    qualified_name[table_name]	{ $$ = new TableName(@$, $table_name); }
- |  joined_table
+    qualified_name[table_name]		{ $$ = new TableName(@$, $table_name); }
+ |  select_with_parens			{ $$ = $select_with_parens; }
+ |  joined_table			{ $$ = $joined_table; }
  ;
 
 joined_table:

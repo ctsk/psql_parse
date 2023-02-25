@@ -48,4 +48,7 @@ namespace psql_parse {
 
 	TableName::TableName(location loc, QualifiedName name)
 	: RelExpr(loc), name(std::move(name)) {}
+
+	QueryExpr::QueryExpr(location loc)
+	: RelExpr(loc) {}
 }

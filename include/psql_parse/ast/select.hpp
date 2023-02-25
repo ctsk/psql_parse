@@ -4,21 +4,8 @@
 #include "expr.hpp"
 
 namespace psql_parse {
-	enum class SetQuantifier {
-		ALL,
-		DISTINCT
-	};
-
 	struct SelectStatement: public Statement {
-		/*
-		 * NOTE: nullptr = ASTERISK
-		 */
-		const ValExpr* ASTERISK = nullptr;
-		std::vector<std::unique_ptr<ValExpr>> target_list;
-
-		std::vector<std::unique_ptr<RelExpr>> from_clause;
-		std::optional<SetQuantifier> set_quantifier;
-
-		explicit SelectStatement(location loc);
+		std::unique_ptr<QueryExpr> query_expr;
+		explicit SelectStatement(QueryExpr *queryExpr);
 	};
 }

@@ -85,7 +85,7 @@ TEST_CASE( "Select statements", "[select]") {
 		parse_string("select 1");
 
 		auto resultStmt = driver.getResult();
-		auto result = dynamic_cast<SelectStatement*>(resultStmt);
+		auto &result = dynamic_cast<SelectStatement*>(resultStmt)->query_expr;
 		REQUIRE(!result->set_quantifier.has_value());
 		REQUIRE(result->target_list.size() == 1);
 		auto expr = dynamic_cast<IntegerLiteral*>(result->target_list.at(0).get());
@@ -96,7 +96,7 @@ TEST_CASE( "Select statements", "[select]") {
 		parse_string("select 1, 2");
 
 		auto resultStmt = driver.getResult();
-		auto result = dynamic_cast<SelectStatement*>(resultStmt);
+		auto &result = dynamic_cast<SelectStatement*>(resultStmt)->query_expr;
 		REQUIRE(!result->set_quantifier.has_value());
 		REQUIRE(result->target_list.size() == 2);
 		auto expr1 = dynamic_cast<IntegerLiteral*>(result->target_list.at(0).get());
@@ -109,7 +109,7 @@ TEST_CASE( "Select statements", "[select]") {
 		parse_string("select *");
 
 		auto resultStmt = driver.getResult();
-		auto result = dynamic_cast<SelectStatement*>(resultStmt);
+		auto &result = dynamic_cast<SelectStatement*>(resultStmt)->query_expr;
 		REQUIRE(!result->set_quantifier.has_value());
 		REQUIRE(result->target_list.size() == 1);
 		REQUIRE(result->target_list.at(0) == nullptr);
@@ -118,13 +118,31 @@ TEST_CASE( "Select statements", "[select]") {
 	SECTION( "select [ALL|DISTINCT] 1" ) {
 		parse_string("select ALL 1");
 		auto resultStmt = driver.getResult();
-		auto result = dynamic_cast<SelectStatement*>(resultStmt);
+		auto &result = dynamic_cast<SelectStatement*>(resultStmt)->query_expr;
 		REQUIRE(result->set_quantifier.value() == SetQuantifier::ALL);
 
 
 		parse_string("select DISTINCT 1");
 		resultStmt = driver.getResult();
-		result = dynamic_cast<SelectStatement*>(resultStmt);
-		REQUIRE(result->set_quantifier.value() == SetQuantifier::DISTINCT);
+		auto &distinct_result = dynamic_cast<SelectStatement*>(resultStmt)->query_expr;
+		REQUIRE(distinct_result->set_quantifier.value() == SetQuantifier::DISTINCT);
+	}
+
+	SECTION( "select 1 from hello" ) {
+		parse_string("select 1 from hello");
+		auto resultStmt = driver.getResult();
+		auto &result = dynamic_cast<SelectStatement*>(resultStmt)->query_expr;
+
+		REQUIRE(result->target_list.size() == 1);
+		REQUIRE(result->from_clause.size() == 1);
+	}
+
+	SECTION( "select 1 from (select foo from bar)" ) {
+		parse_string("select 1 from hello");
+		auto resultStmt = driver.getResult();
+		auto &result = dynamic_cast<SelectStatement*>(resultStmt)->query_expr;
+
+		REQUIRE(result->target_list.size() == 1);
+		REQUIRE(result->from_clause.size() == 1);
 	}
 }

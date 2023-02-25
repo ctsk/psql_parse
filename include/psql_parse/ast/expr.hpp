@@ -92,6 +92,7 @@ namespace psql_parse {
 		QualifiedName name;
 		TableName(location loc, QualifiedName name);
 	};
+
 	struct JoinExpr: public RelExpr {
 		enum class Kind {
 			FULL,
@@ -112,5 +113,23 @@ namespace psql_parse {
 
 		void setNatural();
 		void setQualifier(ValExpr *expr);
+	};
+
+	enum class SetQuantifier {
+		ALL,
+		DISTINCT
+	};
+
+	struct QueryExpr: public RelExpr {
+		/*
+ 		 * NOTE: nullptr = ASTERISK
+ 		*/
+		const ValExpr* ASTERISK = nullptr;
+		std::vector<std::unique_ptr<ValExpr>> target_list;
+
+		std::vector<std::unique_ptr<RelExpr>> from_clause;
+		std::optional<SetQuantifier> set_quantifier;
+
+		explicit QueryExpr(location loc);
 	};
 }
