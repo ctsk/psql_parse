@@ -101,6 +101,12 @@ xhexstart       [xX]{quote}
 "-"             { return psql_parse::parser::make_MINUS(loc); }
 "/"             { return psql_parse::parser::make_SLASH(loc); }
 "*"             { return psql_parse::parser::make_STAR(loc); }
+"="             { return psql_parse::parser::make_EQUAL(loc); }
+"<>"            { return psql_parse::parser::make_NOT_EQUAL(loc); }
+"<="            { return psql_parse::parser::make_LESS_EQUAL(loc); }
+"<"             { return psql_parse::parser::make_LESS(loc); }
+">="            { return psql_parse::parser::make_GREATER_EQUAL(loc); }
+">"             { return psql_parse::parser::make_GREATER(loc); }
 
 action          { return psql_parse::parser::make_ACTION(loc); }
 all             { return psql_parse::parser::make_ALL(loc); }
@@ -156,6 +162,7 @@ real            { return psql_parse::parser::make_REAL(loc); }
 references      { return psql_parse::parser::make_REFERENCES(loc); }
 right           { return psql_parse::parser::make_RIGHT(loc); }
 rows            { return psql_parse::parser::make_ROWS(loc); }
+row             { return psql_parse::parser::make_ROW(loc); }
 select          { return psql_parse::parser::make_SELECT(loc); }
 session_user    { return psql_parse::parser::make_SESSION_USER(loc); }
 set             { return psql_parse::parser::make_SET(loc); }

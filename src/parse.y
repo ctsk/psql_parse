@@ -70,13 +70,19 @@ class driver;
 %token 			SLASH		"/"
 %token 			STAR		"*"
 %token 			MINUS		"-"
+%token 			EQUAL		"="
+%token 			NOT_EQUAL	"<>"
+%token 			LESS_EQUAL	"<="
+%token 			LESS		"<"
+%token 			GREATER_EQUAL	">="
+%token 			GREATER		">"
 %token 			QUOTE		"'"
 
 %token 	ACTION ALL AND AS BIT CASCADE CHARACTER COLLATE COMMIT CONSTRAINT
 	CREATE CROSS CURRENT_USER DATE DECIMAL DEFAULT DELETE DISTINCT DOUBLE EXCEPT
 	FLOAT FOREIGN FROM FULL GLOBAL INNER INTEGER INTERSECT JOIN KEY LEFT LOCAL MATCH
 	NATIONAL NATURAL NO NOT NCHAR NULL NUMERIC ON OR OUTER PARTIAL PRECISION
-	PRESERVE PRIMARY REAL REFERENCES RIGHT ROWS SESSION_USER SET
+	PRESERVE PRIMARY REAL REFERENCES RIGHT ROWS ROW SESSION_USER SET
 	SMALLINT SELECT SYSTEM_USER TABLE TEMPORARY TIMESTAMP TIME
 	UNION UNIQUE UPDATE USER USING VARCHAR VARYING WITH ZONE
 
@@ -135,8 +141,16 @@ class driver;
 %type <std::optional<QualifiedName>>			opt_collate_clause
 %type <TableConstraint>					table_constraint_def
 
-%type <Expression*>					expr
 %type <ValExpr*>					value_expr
+%type <std::vector<std::unique_ptr<ValExpr>>>		value_expr_list
+%type <ValExpr*>					common_value_expr
+%type <ValExpr*>					bool_value_expr
+%type <ValExpr*>					bool_predicand
+%type <ValExpr*>					row_value_expr
+%type <ValExpr*>					row_value_predicand
+%type <ValExpr*>					row_value_constructor
+%type <ValExpr*>					value_expr_primary
+%type <ValExpr*>					value_expr_no_parens
 
 %type <SelectStatement*>				SelectStatement
 %type <RelExpr*>					select_no_parens
@@ -164,13 +178,15 @@ pseudo_start:
  |  SelectStatement	{ driver.result_ = $SelectStatement; }
  ;
 
-ExprStatement: expr	{ $$ = new ExprStatement(@$, $expr); } ;
+ExprStatement: value_expr	{ $$ = new ExprStatement(@$, $value_expr); } ;
 
 /*
  *   Basics building blocks
  */
 
 literal: numeric_literal | general_literal ;
+
+unsigned_literal: unsigned_numeric_literal | general_literal ;
 
 numeric_literal: signed_numeric_literal	| unsigned_numeric_literal ;
 
@@ -415,18 +431,81 @@ table_constraint_def:
  *  Expressions
  */
 
+/*
 expr:
      value_expr { $$ = $1; }
   ;
 
+// Corresponds to <value expression>
+// "unrestricted" expressions
 value_expr:
-     literal
-  |  value_expr[left] OR  value_expr[right]		{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::OR, $right); }
-  |  value_expr[left] AND  value_expr[right]		{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::AND, $right); }
-  |  value_expr[left] PLUS  value_expr[right]		{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::ADD, $right); }
-  |  value_expr[left] MINUS value_expr[right]		{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::SUB, $right); }
-  ;
+    literal
+ |  value_expr[left] OR  value_expr[right]		{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::OR, $right); }
+ |  value_expr[left] AND  value_expr[right]		{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::AND, $right); }
+ |  value_expr[left] PLUS  value_expr[right]		{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::ADD, $right); }
+ |  value_expr[left] MINUS value_expr[right]		{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::SUB, $right); }
+ ;
 
+value_expr_primary: ;
+*/
+
+value_expr:
+    common_value_expr
+ |  bool_value_expr
+ |  row_value_expr
+ ;
+
+value_expr_list:
+    value_expr[elem]						{ $$ = std::vector<std::unique_ptr<ValExpr>>(); $$.emplace_back($elem); }
+ |  value_expr_list[list] COMMA value_expr[elem]		{ $list.emplace_back($elem); std::swap($$, $list); }
+ ;
+
+common_value_expr:
+    value_expr_primary
+ |  common_value_expr[left] MINUS common_value_expr[right]	{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::SUB, $right); }
+ |  common_value_expr[left] PLUS common_value_expr[right]	{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::ADD, $right); }
+ |  common_value_expr[left] SLASH common_value_expr[right]	{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::MULT, $right); }
+ |  common_value_expr[left] STAR common_value_expr[right]	{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::DIV, $right); }
+ ;
+
+bool_value_expr:
+    bool_predicand
+ |  bool_value_expr[left] OR bool_value_expr[right]		{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::OR, $right); }
+ |  bool_value_expr[left] AND bool_value_expr[right]		{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::AND, $right); }
+ |  NOT bool_value_expr[inner]					{ $$ = new UnaryOp(@$, UnaryOp::Op::NOT, $inner); }
+ ;
+
+bool_predicand:
+    row_value_predicand
+ |  bool_predicand EQUAL bool_predicand
+ ;
+
+row_value_expr:
+    value_expr_no_parens
+ |  row_value_constructor
+ ;
+
+row_value_predicand:
+    common_value_expr
+ |  bool_predicand
+ |  value_expr_no_parens
+ ;
+
+row_value_constructor:
+    LP value_expr_list RP
+ |  ROW LP value_expr_list RP
+ |  select_with_parens
+ ;
+
+value_expr_primary:
+    LP value_expr RP		{ $$ = $value_expr; }
+ |  value_expr_no_parens
+ ;
+
+value_expr_no_parens:
+    literal
+ |  IDENTIFIER
+ ;
 
 /************
  *          *

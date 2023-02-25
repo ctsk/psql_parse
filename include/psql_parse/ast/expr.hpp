@@ -78,7 +78,8 @@ namespace psql_parse {
 	struct BinaryOp: public ValExpr {
 		enum class Op {
 			OR, AND,
-			ADD, SUB, MULT, DIV
+			ADD, SUB, MULT, DIV,
+			LESS, LESS_EQUAL, GREATER, GREATER_EQUAL
 		};
 
 		Op op;
