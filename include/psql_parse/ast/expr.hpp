@@ -132,4 +132,20 @@ namespace psql_parse {
 
 		explicit QueryExpr(location loc);
 	};
+
+	struct SetOp: public RelExpr {
+		enum class Op {
+			UNION,
+			INTERSECT,
+			EXCEPT
+		};
+
+		Op op;
+		std::unique_ptr<RelExpr> left;
+		std::unique_ptr<RelExpr> right;
+
+		std::optional<SetQuantifier> quantifier;
+
+		SetOp(location loc, RelExpr *left, Op op, RelExpr *right);
+	};
 }

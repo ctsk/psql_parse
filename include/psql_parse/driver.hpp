@@ -5,7 +5,6 @@
 #include <optional>
 
 #include "psql_parse/scanner.hpp"
-#include "psql_parse/ast/expr.hpp"
 
 namespace psql_parse {
 

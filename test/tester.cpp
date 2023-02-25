@@ -76,16 +76,21 @@ TEST_CASE( "Select statements", "[select]") {
 	using namespace psql_parse;
 	driver driver;
 
-	auto parse_string = [&driver](std::string&& str) {
+	auto parse_string_into_query = [&driver](std::string&& str) -> QueryExpr* {
+		std::istringstream iss(str);
+		REQUIRE(driver.parse(iss));		
+		auto selectStmt = dynamic_cast<SelectStatement*>(driver.getResult());
+		return dynamic_cast<QueryExpr*>(selectStmt->rel_expr.get());
+	};
+	auto parse_string_into_set_op = [&driver](std::string&& str) -> SetOp* {
 		std::istringstream iss(str);
 		REQUIRE(driver.parse(iss));
+		auto selectStmt = dynamic_cast<SelectStatement*>(driver.getResult());
+		return dynamic_cast<SetOp*>(selectStmt->rel_expr.get());
 	};
 
 	SECTION( "select 1" ) {
-		parse_string("select 1");
-
-		auto resultStmt = driver.getResult();
-		auto &result = dynamic_cast<SelectStatement*>(resultStmt)->query_expr;
+		auto result = parse_string_into_query("select 1");
 		REQUIRE(!result->set_quantifier.has_value());
 		REQUIRE(result->target_list.size() == 1);
 		auto expr = dynamic_cast<IntegerLiteral*>(result->target_list.at(0).get());
@@ -93,10 +98,7 @@ TEST_CASE( "Select statements", "[select]") {
 	}
 
 	SECTION( "select 1, 2" ) {
-		parse_string("select 1, 2");
-
-		auto resultStmt = driver.getResult();
-		auto &result = dynamic_cast<SelectStatement*>(resultStmt)->query_expr;
+		auto result = parse_string_into_query("select 1, 2");
 		REQUIRE(!result->set_quantifier.has_value());
 		REQUIRE(result->target_list.size() == 2);
 		auto expr1 = dynamic_cast<IntegerLiteral*>(result->target_list.at(0).get());
@@ -106,43 +108,42 @@ TEST_CASE( "Select statements", "[select]") {
 	}
 
 	SECTION( "select *" ) {
-		parse_string("select *");
-
-		auto resultStmt = driver.getResult();
-		auto &result = dynamic_cast<SelectStatement*>(resultStmt)->query_expr;
+		auto result = parse_string_into_query("select *");
 		REQUIRE(!result->set_quantifier.has_value());
 		REQUIRE(result->target_list.size() == 1);
 		REQUIRE(result->target_list.at(0) == nullptr);
 	}
 
-	SECTION( "select [ALL|DISTINCT] 1" ) {
-		parse_string("select ALL 1");
-		auto resultStmt = driver.getResult();
-		auto &result = dynamic_cast<SelectStatement*>(resultStmt)->query_expr;
+	SECTION( "select ALL 1" ) {
+		auto result = parse_string_into_query("select ALL 1");
 		REQUIRE(result->set_quantifier.value() == SetQuantifier::ALL);
+	}
 
-
-		parse_string("select DISTINCT 1");
-		resultStmt = driver.getResult();
-		auto &distinct_result = dynamic_cast<SelectStatement*>(resultStmt)->query_expr;
-		REQUIRE(distinct_result->set_quantifier.value() == SetQuantifier::DISTINCT);
+	SECTION( "select DISTINCT 1") {
+		auto result = parse_string_into_query("select DISTINCT 1");
+		REQUIRE(result->set_quantifier.value() == SetQuantifier::DISTINCT);
 	}
 
 	SECTION( "select 1 from hello" ) {
-		parse_string("select 1 from hello");
-		auto resultStmt = driver.getResult();
-		auto &result = dynamic_cast<SelectStatement*>(resultStmt)->query_expr;
-
+		auto result = parse_string_into_query("select 1 from hello");
 		REQUIRE(result->target_list.size() == 1);
 		REQUIRE(result->from_clause.size() == 1);
 	}
 
-	SECTION( "select 1 from (select foo from bar)" ) {
-		parse_string("select 1 from hello");
-		auto resultStmt = driver.getResult();
-		auto &result = dynamic_cast<SelectStatement*>(resultStmt)->query_expr;
-
+	SECTION( "select 1 from (select 1 from bar)" ) {
+		auto result = parse_string_into_query("select 1 from (select 1 from bar)");
 		REQUIRE(result->target_list.size() == 1);
 		REQUIRE(result->from_clause.size() == 1);
 	}
+
+	SECTION( "select 1 from (select 1 from bar)" ) {
+		auto result = parse_string_into_set_op("select 1 UNION select 2");
+		REQUIRE(result->op == psql_parse::SetOp::Op::UNION);
+	}
+
+	SECTION( "select 1 from (select 1 from bar)" ) {
+		auto result = parse_string_into_set_op("select 1 INTERSECT select 2");
+		REQUIRE(result->op == psql_parse::SetOp::Op::INTERSECT);
+	}
+
 }

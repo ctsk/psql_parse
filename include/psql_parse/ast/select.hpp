@@ -5,7 +5,7 @@
 
 namespace psql_parse {
 	struct SelectStatement: public Statement {
-		std::unique_ptr<QueryExpr> query_expr;
-		explicit SelectStatement(QueryExpr *queryExpr);
+		std::unique_ptr<RelExpr> rel_expr;
+		explicit SelectStatement(RelExpr *queryExpr);
 	};
 }

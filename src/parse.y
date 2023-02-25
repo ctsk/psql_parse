@@ -73,14 +73,19 @@ class driver;
 %token 			QUOTE		"'"
 
 %token 	ACTION ALL AND AS BIT CASCADE CHARACTER COLLATE COMMIT CONSTRAINT
-	CREATE CROSS CURRENT_USER DATE DECIMAL DEFAULT DELETE DISTINCT DOUBLE
-	FLOAT FOREIGN FROM FULL GLOBAL INNER INTEGER JOIN KEY LEFT LOCAL MATCH
+	CREATE CROSS CURRENT_USER DATE DECIMAL DEFAULT DELETE DISTINCT DOUBLE EXCEPT
+	FLOAT FOREIGN FROM FULL GLOBAL INNER INTEGER INTERSECT JOIN KEY LEFT LOCAL MATCH
 	NATIONAL NATURAL NO NOT NCHAR NULL NUMERIC ON OR OUTER PARTIAL PRECISION
 	PRESERVE PRIMARY REAL REFERENCES RIGHT ROWS SESSION_USER SET
 	SMALLINT SELECT SYSTEM_USER TABLE TEMPORARY TIMESTAMP TIME
-	UNIQUE UPDATE USER USING VARCHAR VARYING WITH ZONE
+	UNION UNIQUE UPDATE USER USING VARCHAR VARYING WITH ZONE
 
-%left PLUS MINUS AND OR
+%left UNION EXCEPT
+%left INTERSECT
+%left OR
+%left AND
+%left PLUS MINUS
+
 %left JOIN CROSS LEFT FULL RIGHT INNER NATURAL
 
 %type <Statement*>		pseudo_start
@@ -134,9 +139,10 @@ class driver;
 %type <ValExpr*>					value_expr
 
 %type <SelectStatement*>				SelectStatement
-%type <QueryExpr*>					select_no_parens
-%type <QueryExpr*>					select_with_parens
-%type <QueryExpr*>					simple_select
+%type <RelExpr*>					select_no_parens
+%type <RelExpr*>					select_with_parens
+%type <RelExpr*>					simple_select
+%type <RelExpr*>					select_clause
 %type <std::optional<SetQuantifier>>			opt_set_quantifier
 
 %type <std::vector<std::unique_ptr<ValExpr>>>		target_list
@@ -438,18 +444,31 @@ select_with_parens:
  |  LP select_with_parens[inner] RP	{ $$ = $inner; }
  ;
 
+/*
+ *  MISSING: with_clause
+ */
 select_no_parens:
     simple_select
  ;
 
+select_clause: simple_select | select_with_parens ;
+
 simple_select:
-    SELECT opt_set_quantifier target_list 		{ $$ = new QueryExpr(@$);
-    						  	  $$->target_list = std::move($target_list);
-    						  	  $$->set_quantifier = $opt_set_quantifier; }
- |  SELECT opt_set_quantifier target_list from_clause	{ $$ = new QueryExpr(@$);
-							  $$->target_list = std::move($target_list);
-							  $$->from_clause = std::move($from_clause);
-							  $$->set_quantifier = $opt_set_quantifier; }
+    SELECT opt_set_quantifier target_list 		{ auto expr = new QueryExpr(@$);
+    						  	  expr->target_list = std::move($target_list);
+    						  	  expr->set_quantifier = $opt_set_quantifier;
+    						  	  $$ = expr; }
+ |  SELECT opt_set_quantifier target_list from_clause	{ auto expr = new QueryExpr(@$);
+							  expr->target_list = std::move($target_list);
+							  expr->from_clause = std::move($from_clause);
+							  expr->set_quantifier = $opt_set_quantifier;
+							  $$ = expr; }
+ |  select_clause[left] UNION opt_set_quantifier[quant] select_clause[right]
+    { auto expr = new SetOp(@$, $left, SetOp::Op::UNION, $right); expr->quantifier = $quant; $$ = expr; }
+ |  select_clause[left] INTERSECT opt_set_quantifier[quant] select_clause[right]
+    { auto expr = new SetOp(@$, $left, SetOp::Op::INTERSECT, $right); expr->quantifier = $quant; $$ = expr; }
+ |  select_clause[left] EXCEPT opt_set_quantifier[quant] select_clause[right]
+    { auto expr = new SetOp(@$, $left, SetOp::Op::EXCEPT, $right); expr->quantifier = $quant; $$ = expr; }
  ;
 
 opt_set_quantifier:
@@ -457,6 +476,7 @@ opt_set_quantifier:
  |  DISTINCT	{ $$ = SetQuantifier::DISTINCT; }
  |  %empty	{ $$ = std::nullopt; }
  ;
+
 
 /*
  *  NOTE: target_list is a slight deviation from the standard:

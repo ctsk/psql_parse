@@ -123,6 +123,7 @@ default         { return psql_parse::parser::make_DEFAULT(loc); }
 delete          { return psql_parse::parser::make_DELETE(loc); }
 distinct        { return psql_parse::parser::make_DISTINCT(loc); }
 double          { return psql_parse::parser::make_DOUBLE(loc); }
+except          { return psql_parse::parser::make_EXCEPT(loc); }
 float           { return psql_parse::parser::make_FLOAT(loc); }
 foreign         { return psql_parse::parser::make_FOREIGN(loc); }
 from            { return psql_parse::parser::make_FROM(loc); }
@@ -130,6 +131,7 @@ full            { return psql_parse::parser::make_FULL(loc); }
 global          { return psql_parse::parser::make_GLOBAL(loc); }
 inner           { return psql_parse::parser::make_INNER(loc); }
 integer         { return psql_parse::parser::make_INTEGER(loc); }
+intersect       { return psql_parse::parser::make_INTERSECT(loc); }
 int             { return psql_parse::parser::make_INTEGER(loc); }
 join            { return psql_parse::parser::make_JOIN(loc); }
 key             { return psql_parse::parser::make_KEY(loc); }
@@ -162,6 +164,7 @@ table           { return psql_parse::parser::make_TABLE(loc); }
 temporary       { return psql_parse::parser::make_TEMPORARY(loc); }
 timestamp       { return psql_parse::parser::make_TIMESTAMP(loc); }
 time            { return psql_parse::parser::make_TIME(loc); }
+union           { return psql_parse::parser::make_UNION(loc); }
 unique          { return psql_parse::parser::make_UNIQUE(loc); }
 update          { return psql_parse::parser::make_UPDATE(loc); }
 user            { return psql_parse::parser::make_USER(loc); }

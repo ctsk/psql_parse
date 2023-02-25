@@ -51,4 +51,7 @@ namespace psql_parse {
 
 	QueryExpr::QueryExpr(location loc)
 	: RelExpr(loc) {}
+
+	SetOp::SetOp(location loc, RelExpr *left, SetOp::Op op, RelExpr *right)
+	: RelExpr(loc), op(op), left(left), right(right) {}
 }
