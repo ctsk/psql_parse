@@ -174,8 +174,6 @@ class driver;
 %type <RelExpr*>					table_ref
 %type <JoinExpr*>					joined_table
 %type <JoinExpr::Kind>					join_type
-
-%type <ValExpr*>					opt_where_clause
 %type <ValExpr*>					where_clause
 
 
@@ -566,13 +564,15 @@ select_no_parens:
 select_clause: simple_select | select_with_parens ;
 
 simple_select:
-    SELECT opt_set_quantifier target_list from_clause opt_where_clause
- 							{ auto expr = new QueryExpr(@$);
-							  expr->target_list = std::move($target_list);
-							  expr->from_clause = std::move($from_clause);
-							  expr->where_clause = std::unique_ptr<ValExpr>($opt_where_clause);
-							  expr->set_quantifier = $opt_set_quantifier;
-							  $$ = expr; }
+    SELECT opt_set_quantifier target_list from_clause where_clause
+ 	{
+ 		auto expr = new QueryExpr(@$);
+		expr->target_list = std::move($target_list);
+		expr->from_clause = std::move($from_clause);
+		expr->where_clause = std::unique_ptr<ValExpr>($where_clause);
+		expr->set_quantifier = $opt_set_quantifier;
+		$$ = expr;
+	}
  |  select_clause[left] UNION opt_set_quantifier[quant] select_clause[right]
     { auto expr = new SetOp(@$, $left, SetOp::Op::UNION, $right); expr->quantifier = $quant; $$ = expr; }
  |  select_clause[left] INTERSECT opt_set_quantifier[quant] select_clause[right]
@@ -611,6 +611,7 @@ target_element:
 
 from_clause:
     FROM from_list			{ $$ = std::move($from_list); }
+ |  %empty 				{ $$ = std::vector<std::unique_ptr<RelExpr>>(); }
  ;
 
 from_list:
@@ -651,8 +652,10 @@ join_type:
 // outer is just noise
 opt_outer: OUTER | %empty ;
 
-opt_where_clause: where_clause | %empty { $$ = nullptr; };
-where_clause: WHERE value_expr 	{ $$ = $value_expr; } ;
+where_clause:
+    WHERE value_expr 	{ $$ = $value_expr; }
+ |  %empty		{ $$ = nullptr; }
+ ;
 
 %%
 
