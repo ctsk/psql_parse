@@ -78,13 +78,13 @@ class driver;
 %token 			GREATER		">"
 %token 			QUOTE		"'"
 
-%token 	ACTION ALL AND AS BIT CASCADE CHARACTER COLLATE COMMIT CONSTRAINT
-	CREATE CROSS CURRENT_USER DATE DECIMAL DEFAULT DELETE DISTINCT DOUBLE EXCEPT
+%token 	ACTION ALL AND ASYMMETRIC AS BETWEEN BIT CASCADE CHARACTER COLLATE COMMIT CONSTRAINT
+	CREATE CROSS CURRENT_USER DATE DECIMAL DEFAULT DELETE DISTINCT DOUBLE EXCEPT FALSE
 	FLOAT FOREIGN FROM FULL GLOBAL INNER INTEGER INTERSECT JOIN KEY LEFT LOCAL MATCH
 	NATIONAL NATURAL NO NOT NCHAR NULL NUMERIC ON OR OUTER PARTIAL PRECISION
 	PRESERVE PRIMARY REAL REFERENCES RIGHT ROWS ROW SESSION_USER SET
-	SMALLINT SELECT SYSTEM_USER TABLE TEMPORARY TIMESTAMP TIME
-	UNION UNIQUE UPDATE USER USING VARCHAR VARYING WHERE WITH ZONE
+	SMALLINT SELECT SYMMETRIC SYSTEM_USER TABLE TEMPORARY TIMESTAMP TIME TRUE
+	UNION UNIQUE UNKNOWN UPDATE USER USING VARCHAR VARYING WHERE WITH ZONE
 
 %left UNION EXCEPT
 %left INTERSECT
@@ -92,9 +92,10 @@ class driver;
 %left AND
 %right NOT
 %nonassoc LESS GREATER EQUAL LESS_EQUAL GREATER_EQUAL NOT_EQUAL COMP_OP
+%right BETWEEN
 %left PLUS MINUS
 %left STAR SLASH
-%precedence UMINUS
+%precedence SUBQUERY_AS_EXPR
 %left LP RP
 
 %left JOIN CROSS LEFT FULL RIGHT INNER NATURAL
@@ -151,7 +152,10 @@ class driver;
 %type <std::vector<std::unique_ptr<ValExpr>>>		value_expr_list
 %type <ValExpr*>					common_value_expr
 %type <ValExpr*>					bool_value_expr
+%type <BoolLiteral>					truth_value
+%type <bool>						opt_symmetric
 %type <ValExpr*>					bool_predicand
+%type <BinaryOp::Op>					comp_op
 %type <ValExpr*>					value_expr_no_parens
 
 %type <SelectStatement*>				SelectStatement
@@ -458,38 +462,72 @@ value_expr:
  |  ROW LP value_expr_list RP
  ;
 
+bool_value_expr:
+    bool_predicand						{ $$ = $bool_predicand; }
+ |  bool_value_expr[left] OR bool_value_expr[right]		{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::OR, $right); }
+ |  bool_value_expr[left] AND bool_value_expr[right]		{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::AND, $right); }
+ // NOT and IS accept bool_predicand as child, preventing `NOT NOT expr` / `expr IS TRUE IS FALSE`
+ |  NOT bool_predicand[inner]					{ $$ = new UnaryOp(@$, UnaryOp::Op::NOT, $inner); }
+ |  bool_predicand[inner] IS truth_value			{ $$ = new IsExpr(@$, $inner, $truth_value); }
+ |  bool_predicand[inner] IS NOT truth_value %prec IS		{ $$ = UnaryOp::Not(new IsExpr(@$, $inner, $truth_value)); }
+ ;
+
+truth_value:
+    TRUE	{ $$ = BoolLiteral::TRUE; }
+ |  FALSE	{ $$ = BoolLiteral::FALSE; }
+ |  UNKNOWN	{ $$ = BoolLiteral::UNKNOWN; }
+ ;
+
+bool_predicand:
+    common_value_expr						{ $$ = $common_value_expr; }
+ |  bool_predicand[left] comp_op bool_predicand[right] %prec COMP_OP
+ 	{ $$ = new BinaryOp(@$, $left, $comp_op, $right); }
+ |  bool_predicand[val] BETWEEN opt_symmetric bool_predicand[low] AND bool_predicand[high] %prec BETWEEN
+ 	{ auto expr = new BetweenPred(@$, $val, $low, $high); expr->symmetric = $opt_symmetric; $$ = expr; }
+ |  bool_predicand[val] NOT BETWEEN opt_symmetric bool_predicand[low] AND bool_predicand[high] %prec BETWEEN
+ 	{ auto expr = new BetweenPred(@$, $val, $low, $high); expr->symmetric = $opt_symmetric; $$ = UnaryOp::Not(expr); }
+ ;
+
+/*
+ *  In accordance with the standard, if neither symmetric or asymmetric is specified, then asymmetric is implicit
+ */
+opt_symmetric:
+    SYMMETRIC		{ $$ = true; }
+ |  ASYMMETRIC		{ $$ = false; }
+ |  %empty		{ $$ = false; }
+ ;
+
 value_expr_list:
     value_expr[elem]						{ $$ = std::vector<std::unique_ptr<ValExpr>>(); $$.emplace_back($elem); }
  |  value_expr_list[list] COMMA value_expr[elem]		{ $list.emplace_back($elem); std::swap($$, $list); }
  ;
 
 common_value_expr:
-    select_with_parens		%prec UMINUS
+    select_with_parens		%prec SUBQUERY_AS_EXPR		{ $$ = new RowSubquery(@$, $select_with_parens); }
  |  LP value_expr RP						{ $$ = $value_expr; }
- |  value_expr_no_parens
+ |  value_expr_no_parens					{ $$ = $value_expr_no_parens; }
  |  common_value_expr[left] MINUS common_value_expr[right]	{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::SUB, $right); }
  |  common_value_expr[left] PLUS common_value_expr[right]	{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::ADD, $right); }
  |  common_value_expr[left] SLASH common_value_expr[right]	{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::MULT, $right); }
  |  common_value_expr[left] STAR common_value_expr[right]	{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::DIV, $right); }
+ |  PLUS common_value_expr[inner]				{ $$ = $inner; }
+ |  MINUS common_value_expr[inner]				{ $$ = new UnaryOp(@$, UnaryOp::Op::NEG, $inner); }
  ;
 
-bool_value_expr:
-    bool_predicand
- |  bool_value_expr[left] OR bool_value_expr[right]		{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::OR, $right); }
- |  bool_value_expr[left] AND bool_value_expr[right]		{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::AND, $right); }
- |  NOT bool_value_expr[inner]					{ $$ = new UnaryOp(@$, UnaryOp::Op::NOT, $inner); }
- ;
 
-bool_predicand:
-    common_value_expr
- |  bool_predicand comp_op bool_predicand %prec COMP_OP
- ;
 
-comp_op: NOT_EQUAL | EQUAL | LESS_EQUAL | LESS | GREATER_EQUAL | GREATER;
+comp_op:
+    NOT_EQUAL		{ $$ = BinaryOp::Op::NOT_EQUAL; }
+ |  EQUAL		{ $$ = BinaryOp::Op::EQUAL; }
+ |  LESS_EQUAL		{ $$ = BinaryOp::Op::LESS_EQUAL; }
+ |  LESS		{ $$ = BinaryOp::Op::LESS; }
+ |  GREATER_EQUAL	{ $$ = BinaryOp::Op::GREATER_EQUAL; }
+ |  GREATER		{ $$ = BinaryOp::Op::GREATER; }
+ ;
 
 value_expr_no_parens:
-    unsigned_literal
- |  IDENTIFIER
+    unsigned_literal	{ $$ = $unsigned_literal; }
+ |  IDENTIFIER		{ $$ = new Var(@$, $IDENTIFIER); }
  ;
 
 /************

@@ -29,9 +29,6 @@ namespace psql_parse {
 	BinaryOp::BinaryOp(location loc, ValExpr *left, BinaryOp::Op op, ValExpr *right)
 	: ValExpr(loc), op(op), left(left), right(right) {}
 
-	IsExpr::IsExpr(location loc, std::unique_ptr<ValExpr> expr, BoolLiteral lit)
-	: ValExpr(loc), expr(std::move(expr)), lit(lit) {}
-
 	AliasExpr::AliasExpr(location loc, std::string name, ValExpr *expr)
 	: ValExpr(loc), name(std::move(name)), expr(expr) {}
 
@@ -54,4 +51,16 @@ namespace psql_parse {
 
 	SetOp::SetOp(location loc, RelExpr *left, SetOp::Op op, RelExpr *right)
 	: RelExpr(loc), op(op), left(left), right(right) {}
+
+	RowSubquery::RowSubquery(location loc, RelExpr *expr)
+	: ValExpr(loc), subquery(expr) { }
+
+	Var::Var(location loc, std::string name)
+	: ValExpr(loc), name(std::move(name)) {}
+
+	IsExpr::IsExpr(location loc, ValExpr *inner, BoolLiteral truth_value)
+	: ValExpr(loc), inner(inner), truth_value(truth_value) {}
+
+	BetweenPred::BetweenPred(location loc, ValExpr *val, ValExpr *low, ValExpr *high)
+	: ValExpr(loc), val(val), low(low), high(high), symmetric(false) {}
 }

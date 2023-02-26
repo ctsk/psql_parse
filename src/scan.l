@@ -111,7 +111,9 @@ xhexstart       [xX]{quote}
 action          { return psql_parse::parser::make_ACTION(loc); }
 all             { return psql_parse::parser::make_ALL(loc); }
 and             { return psql_parse::parser::make_AND(loc); }
+asymmetric      { return psql_parse::parser::make_ASYMMETRIC(loc); }
 as              { return psql_parse::parser::make_AS(loc); }
+between         { return psql_parse::parser::make_BETWEEN(loc); }
 bit             { return psql_parse::parser::make_BIT(loc); }
 cascade         { return psql_parse::parser::make_CASCADE(loc); }
 character       { return psql_parse::parser::make_CHARACTER(loc); }
@@ -130,6 +132,7 @@ delete          { return psql_parse::parser::make_DELETE(loc); }
 distinct        { return psql_parse::parser::make_DISTINCT(loc); }
 double          { return psql_parse::parser::make_DOUBLE(loc); }
 except          { return psql_parse::parser::make_EXCEPT(loc); }
+false           { return psql_parse::parser::make_FALSE(loc); }
 float           { return psql_parse::parser::make_FLOAT(loc); }
 foreign         { return psql_parse::parser::make_FOREIGN(loc); }
 from            { return psql_parse::parser::make_FROM(loc); }
@@ -166,13 +169,16 @@ row             { return psql_parse::parser::make_ROW(loc); }
 select          { return psql_parse::parser::make_SELECT(loc); }
 session_user    { return psql_parse::parser::make_SESSION_USER(loc); }
 set             { return psql_parse::parser::make_SET(loc); }
+symmetric       { return psql_parse::parser::make_SYMMETRIC(loc); }
 system_user     { return psql_parse::parser::make_SYSTEM_USER(loc); }
 table           { return psql_parse::parser::make_TABLE(loc); }
 temporary       { return psql_parse::parser::make_TEMPORARY(loc); }
 timestamp       { return psql_parse::parser::make_TIMESTAMP(loc); }
 time            { return psql_parse::parser::make_TIME(loc); }
+true            { return psql_parse::parser::make_TRUE(loc); }
 union           { return psql_parse::parser::make_UNION(loc); }
 unique          { return psql_parse::parser::make_UNIQUE(loc); }
+unknown         { return psql_parse::parser::make_UNKNOWN(loc); }
 update          { return psql_parse::parser::make_UPDATE(loc); }
 user            { return psql_parse::parser::make_USER(loc); }
 using           { return psql_parse::parser::make_USING(loc); }
