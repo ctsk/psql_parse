@@ -78,10 +78,10 @@ class driver;
 %token 			GREATER		">"
 %token 			QUOTE		"'"
 
-%token 	ACTION ALL AND ASYMMETRIC AS BETWEEN BIT CASCADE CHARACTER COLLATE COMMIT CONSTRAINT
-	CREATE CROSS CURRENT_USER DATE DECIMAL DEFAULT DELETE DISTINCT DOUBLE EXCEPT FALSE
-	FLOAT FOREIGN FROM FULL GLOBAL INNER INTEGER INTERSECT IN JOIN KEY LEFT LOCAL MATCH
-	NATIONAL NATURAL NO NOT NCHAR NULL NUMERIC ON OR OUTER PARTIAL PRECISION
+%token 	ACTION ALL AND ASYMMETRIC ASC AS BETWEEN BIT BY CASCADE CHARACTER COLLATE COMMIT CONSTRAINT
+	CREATE CROSS CURRENT_USER DATE DECIMAL DEFAULT DELETE DESC DISTINCT DOUBLE EXCEPT FALSE FIRST
+	FLOAT FOREIGN FROM FULL GLOBAL INNER INTEGER INTERSECT IN JOIN KEY LAST LEFT LOCAL MATCH
+	NATIONAL NATURAL NO NOT NCHAR NULLS NULL NUMERIC ON ORDER OR OUTER PARTIAL PRECISION
 	PRESERVE PRIMARY REAL REFERENCES RIGHT ROWS ROW SESSION_USER SET
 	SMALLINT SELECT SYMMETRIC SYSTEM_USER TABLE TEMPORARY TIMESTAMP TIME TRUE
 	UNION UNIQUE UNKNOWN UPDATE USER USING VARCHAR VARYING WHERE WITH ZONE
@@ -166,6 +166,12 @@ class driver;
 %type <RelExpr*>					simple_select
 %type <RelExpr*>					select_clause
 %type <std::optional<SetQuantifier>>			opt_set_quantifier
+
+%type <std::vector<SortSpec>>				order_by_clause
+%type <std::vector<SortSpec>>				sort_spec_list
+%type <SortSpec>					sort_spec
+%type <SortSpec::Order>					opt_asc_or_desc
+%type <SortSpec::NullOrder>				null_ordering
 
 %type <std::vector<std::unique_ptr<ValExpr>>>		target_list
 %type <ValExpr*>					target_element
@@ -559,9 +565,37 @@ select_with_parens:
  */
 select_no_parens:
     simple_select
+ |  select_clause order_by_clause
+    { $$ = new OrderOp(@$, $select_clause, std::move($order_by_clause)); }
  ;
 
 select_clause: simple_select | select_with_parens ;
+
+order_by_clause:
+    ORDER BY sort_spec_list { $$ = std::move($sort_spec_list); }
+ ;
+
+sort_spec_list:
+    sort_spec					{ $$ = std::vector<SortSpec>(); }
+ |  sort_spec_list[list] COMMA sort_spec	{ $list.push_back(std::move($sort_spec)); std::swap($$, $list); }
+ ;
+
+sort_spec:
+    value_expr opt_asc_or_desc null_ordering
+    { $$ = SortSpec(@$, $value_expr); $$.order = $opt_asc_or_desc; $$.null_order = $null_ordering; }
+ ;
+
+opt_asc_or_desc:
+    ASC		{ $$ = SortSpec::Order::ASC; }
+ |  DESC	{ $$ = SortSpec::Order::DESC; }
+ |  %empty	{ $$ = SortSpec::Order::ASC; }
+ ;
+
+null_ordering:
+    NULLS FIRST	{ $$ = SortSpec::NullOrder::FIRST; }
+ |  NULLS LAST	{ $$ = SortSpec::NullOrder::LAST; }
+ |  %empty	{ $$ = SortSpec::NullOrder::DEFAULT; }
+ ;
 
 simple_select:
     SELECT opt_set_quantifier target_list from_clause where_clause

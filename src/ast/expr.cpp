@@ -72,4 +72,12 @@ namespace psql_parse {
 
 	InPred::InPred(location loc, ValExpr *val, RelExpr *rows)
 	: ValExpr(loc), val(val), rows(rows) {}
+
+	SortSpec::SortSpec(location loc, ValExpr *expr)
+	: loc(loc), expr(expr) {}
+
+	SortSpec::SortSpec() = default;
+
+	OrderOp::OrderOp(location loc, RelExpr *expr, std::vector<SortSpec> fields)
+	: RelExpr(loc), expr(expr), fields(std::move(fields)) {}
 }

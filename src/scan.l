@@ -112,9 +112,11 @@ action          { return psql_parse::parser::make_ACTION(loc); }
 all             { return psql_parse::parser::make_ALL(loc); }
 and             { return psql_parse::parser::make_AND(loc); }
 asymmetric      { return psql_parse::parser::make_ASYMMETRIC(loc); }
+asc             { return psql_parse::parser::make_ASC(loc); }
 as              { return psql_parse::parser::make_AS(loc); }
 between         { return psql_parse::parser::make_BETWEEN(loc); }
 bit             { return psql_parse::parser::make_BIT(loc); }
+by              { return psql_parse::parser::make_BY(loc); }
 cascade         { return psql_parse::parser::make_CASCADE(loc); }
 character       { return psql_parse::parser::make_CHARACTER(loc); }
 char            { return psql_parse::parser::make_CHARACTER(loc); }
@@ -129,10 +131,12 @@ decimal         { return psql_parse::parser::make_DECIMAL(loc); }
 dec             { return psql_parse::parser::make_DECIMAL(loc); }
 default         { return psql_parse::parser::make_DEFAULT(loc); }
 delete          { return psql_parse::parser::make_DELETE(loc); }
+desc            { return psql_parse::parser::make_DESC(loc); }
 distinct        { return psql_parse::parser::make_DISTINCT(loc); }
 double          { return psql_parse::parser::make_DOUBLE(loc); }
 except          { return psql_parse::parser::make_EXCEPT(loc); }
 false           { return psql_parse::parser::make_FALSE(loc); }
+first           { return psql_parse::parser::make_FIRST(loc); }
 float           { return psql_parse::parser::make_FLOAT(loc); }
 foreign         { return psql_parse::parser::make_FOREIGN(loc); }
 from            { return psql_parse::parser::make_FROM(loc); }
@@ -145,6 +149,7 @@ int             { return psql_parse::parser::make_INTEGER(loc); }
 in              { return psql_parse::parser::make_IN(loc); }
 join            { return psql_parse::parser::make_JOIN(loc); }
 key             { return psql_parse::parser::make_KEY(loc); }
+last            { return psql_parse::parser::make_LAST(loc); }
 left            { return psql_parse::parser::make_LEFT(loc); }
 local           { return psql_parse::parser::make_LOCAL(loc); }
 match           { return psql_parse::parser::make_MATCH(loc); }
@@ -153,9 +158,11 @@ natural         { return psql_parse::parser::make_NATURAL(loc); }
 nchar           { return psql_parse::parser::make_NCHAR(loc); }
 not             { return psql_parse::parser::make_NOT(loc); }
 no              { return psql_parse::parser::make_NO(loc); }
+nulls           { return psql_parse::parser::make_NULLS(loc); }
 null            { return psql_parse::parser::make_NULL(loc); }
 numeric         { return psql_parse::parser::make_NUMERIC(loc); }
 on              { return psql_parse::parser::make_ON(loc); }
+order           { return psql_parse::parser::make_ORDER(loc); }
 or              { return psql_parse::parser::make_ON(loc); }
 outer           { return psql_parse::parser::make_OUTER(loc); }
 partial         { return psql_parse::parser::make_PARTIAL(loc); }

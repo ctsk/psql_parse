@@ -130,6 +130,27 @@ namespace psql_parse {
 		DISTINCT
 	};
 
+	struct SortSpec {
+		enum class Order {
+			ASC,
+			DESC
+		};
+
+		enum class NullOrder {
+			DEFAULT,
+			FIRST,
+			LAST,
+		};
+
+		location loc;
+		std::unique_ptr<ValExpr> expr;
+		Order order = Order::ASC;
+		NullOrder null_order = NullOrder::DEFAULT;
+
+		SortSpec();
+		SortSpec(location loc, ValExpr *expr);
+	};
+
 	struct QueryExpr: public RelExpr {
 		/*
  		 * NOTE: nullptr = ASTERISK
@@ -141,6 +162,13 @@ namespace psql_parse {
 		std::optional<SetQuantifier> set_quantifier;
 
 		explicit QueryExpr(location loc);
+	};
+
+	struct OrderOp: public RelExpr {
+		std::unique_ptr<RelExpr> expr;
+		std::vector<SortSpec> fields;
+
+		explicit OrderOp(location loc, RelExpr *expr, std::vector<SortSpec> fields);
 	};
 
 	struct SetOp: public RelExpr {
@@ -162,7 +190,7 @@ namespace psql_parse {
 	struct ValuesExpr: public RelExpr {
 		std::vector<std::unique_ptr<ValExpr>> rows;
 
-		ValuesExpr(location loc);
+		explicit ValuesExpr(location loc);
 		ValuesExpr(location loc, std::vector<std::unique_ptr<ValExpr>> rows);
 	};
 
