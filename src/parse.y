@@ -84,7 +84,7 @@ class driver;
 	NATIONAL NATURAL NO NOT NCHAR NULL NUMERIC ON OR OUTER PARTIAL PRECISION
 	PRESERVE PRIMARY REAL REFERENCES RIGHT ROWS ROW SESSION_USER SET
 	SMALLINT SELECT SYSTEM_USER TABLE TEMPORARY TIMESTAMP TIME
-	UNION UNIQUE UPDATE USER USING VARCHAR VARYING WITH ZONE
+	UNION UNIQUE UPDATE USER USING VARCHAR VARYING WHERE WITH ZONE
 
 %left UNION EXCEPT
 %left INTERSECT
@@ -105,6 +105,7 @@ class driver;
 %type <ValExpr*>		unsigned_numeric_literal
 %type <StringLiteral*>		general_literal
 %type <ValExpr*>		literal
+%type <ValExpr*>		unsigned_literal
 // %type <Statement*>		ExprStatement
 %type <Statement*>		CreateStatement
 
@@ -167,6 +168,8 @@ class driver;
 %type <RelExpr*>					table_ref
 %type <JoinExpr*>					joined_table
 %type <JoinExpr::Kind>					join_type
+
+%type <ValExpr*>					where_clause
 
 
 %%
@@ -485,7 +488,7 @@ bool_predicand:
 comp_op: NOT_EQUAL | EQUAL | LESS_EQUAL | LESS | GREATER_EQUAL | GREATER;
 
 value_expr_no_parens:
-    literal
+    unsigned_literal
  |  IDENTIFIER
  ;
 
@@ -601,6 +604,8 @@ join_type:
 
 // outer is just noise
 opt_outer: OUTER | %empty ;
+
+where_clause: WHERE value_expr 	{ $$ = $value_expr; } ;
 
 %%
 

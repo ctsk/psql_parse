@@ -178,6 +178,7 @@ user            { return psql_parse::parser::make_USER(loc); }
 using           { return psql_parse::parser::make_USING(loc); }
 varchar         { return psql_parse::parser::make_VARCHAR(loc); }
 varying         { return psql_parse::parser::make_VARYING(loc); }
+where           { return psql_parse::parser::make_WHERE(loc); }
 with            { return psql_parse::parser::make_WITH(loc); }
 zone            { return psql_parse::parser::make_ZONE(loc); }
 
