@@ -90,7 +90,12 @@ class driver;
 %left INTERSECT
 %left OR
 %left AND
+%right NOT
+%nonassoc LESS GREATER EQUAL LESS_EQUAL GREATER_EQUAL NOT_EQUAL COMP_OP
 %left PLUS MINUS
+%left STAR SLASH
+%precedence UMINUS
+%left LP RP
 
 %left JOIN CROSS LEFT FULL RIGHT INNER NATURAL
 
@@ -100,7 +105,7 @@ class driver;
 %type <ValExpr*>		unsigned_numeric_literal
 %type <StringLiteral*>		general_literal
 %type <ValExpr*>		literal
-%type <Statement*>		ExprStatement
+// %type <Statement*>		ExprStatement
 %type <Statement*>		CreateStatement
 
 
@@ -146,10 +151,6 @@ class driver;
 %type <ValExpr*>					common_value_expr
 %type <ValExpr*>					bool_value_expr
 %type <ValExpr*>					bool_predicand
-%type <ValExpr*>					row_value_expr
-%type <ValExpr*>					row_value_predicand
-%type <ValExpr*>					row_value_constructor
-%type <ValExpr*>					value_expr_primary
 %type <ValExpr*>					value_expr_no_parens
 
 %type <SelectStatement*>				SelectStatement
@@ -173,12 +174,11 @@ class driver;
 %start pseudo_start;
 
 pseudo_start:
-    ExprStatement	{ driver.result_ = $ExprStatement; }
- |  CreateStatement	{ driver.result_ = $CreateStatement; }
+    CreateStatement	{ driver.result_ = $CreateStatement; }
  |  SelectStatement	{ driver.result_ = $SelectStatement; }
  ;
 
-ExprStatement: value_expr	{ $$ = new ExprStatement(@$, $value_expr); } ;
+// ExprStatement: value_expr	{ $$ = new ExprStatement(@$, $value_expr); } ;
 
 /*
  *   Basics building blocks
@@ -450,9 +450,9 @@ value_expr_primary: ;
 */
 
 value_expr:
-    common_value_expr
- |  bool_value_expr
- |  row_value_expr
+    bool_value_expr
+ |  LP value_expr_list COMMA value_expr RP
+ |  ROW LP value_expr_list RP
  ;
 
 value_expr_list:
@@ -461,7 +461,9 @@ value_expr_list:
  ;
 
 common_value_expr:
-    value_expr_primary
+    select_with_parens		%prec UMINUS
+ |  LP value_expr RP						{ $$ = $value_expr; }
+ |  value_expr_no_parens
  |  common_value_expr[left] MINUS common_value_expr[right]	{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::SUB, $right); }
  |  common_value_expr[left] PLUS common_value_expr[right]	{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::ADD, $right); }
  |  common_value_expr[left] SLASH common_value_expr[right]	{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::MULT, $right); }
@@ -476,31 +478,11 @@ bool_value_expr:
  ;
 
 bool_predicand:
-    row_value_predicand
- |  bool_predicand EQUAL bool_predicand
- ;
-
-row_value_expr:
-    value_expr_no_parens
- |  row_value_constructor
- ;
-
-row_value_predicand:
     common_value_expr
- |  bool_predicand
- |  value_expr_no_parens
+ |  bool_predicand comp_op bool_predicand %prec COMP_OP
  ;
 
-row_value_constructor:
-    LP value_expr_list RP
- |  ROW LP value_expr_list RP
- |  select_with_parens
- ;
-
-value_expr_primary:
-    LP value_expr RP		{ $$ = $value_expr; }
- |  value_expr_no_parens
- ;
+comp_op: NOT_EQUAL | EQUAL | LESS_EQUAL | LESS | GREATER_EQUAL | GREATER;
 
 value_expr_no_parens:
     literal
