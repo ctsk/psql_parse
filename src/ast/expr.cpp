@@ -63,4 +63,13 @@ namespace psql_parse {
 
 	BetweenPred::BetweenPred(location loc, ValExpr *val, ValExpr *low, ValExpr *high)
 	: ValExpr(loc), val(val), low(low), high(high), symmetric(false) {}
+
+	ValuesExpr::ValuesExpr(location loc)
+	: RelExpr(loc) {}
+
+	ValuesExpr::ValuesExpr(location loc, std::vector<std::unique_ptr<ValExpr>> rows)
+	: RelExpr(loc), rows(std::move(rows)) {}
+
+	InPred::InPred(location loc, ValExpr *val, RelExpr *rows)
+	: ValExpr(loc), val(val), rows(rows) {}
 }

@@ -142,6 +142,7 @@ inner           { return psql_parse::parser::make_INNER(loc); }
 integer         { return psql_parse::parser::make_INTEGER(loc); }
 intersect       { return psql_parse::parser::make_INTERSECT(loc); }
 int             { return psql_parse::parser::make_INTEGER(loc); }
+in              { return psql_parse::parser::make_IN(loc); }
 join            { return psql_parse::parser::make_JOIN(loc); }
 key             { return psql_parse::parser::make_KEY(loc); }
 left            { return psql_parse::parser::make_LEFT(loc); }

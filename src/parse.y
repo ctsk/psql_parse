@@ -80,7 +80,7 @@ class driver;
 
 %token 	ACTION ALL AND ASYMMETRIC AS BETWEEN BIT CASCADE CHARACTER COLLATE COMMIT CONSTRAINT
 	CREATE CROSS CURRENT_USER DATE DECIMAL DEFAULT DELETE DISTINCT DOUBLE EXCEPT FALSE
-	FLOAT FOREIGN FROM FULL GLOBAL INNER INTEGER INTERSECT JOIN KEY LEFT LOCAL MATCH
+	FLOAT FOREIGN FROM FULL GLOBAL INNER INTEGER INTERSECT IN JOIN KEY LEFT LOCAL MATCH
 	NATIONAL NATURAL NO NOT NCHAR NULL NUMERIC ON OR OUTER PARTIAL PRECISION
 	PRESERVE PRIMARY REAL REFERENCES RIGHT ROWS ROW SESSION_USER SET
 	SMALLINT SELECT SYMMETRIC SYSTEM_USER TABLE TEMPORARY TIMESTAMP TIME TRUE
@@ -91,8 +91,9 @@ class driver;
 %left OR
 %left AND
 %right NOT
+%nonassoc IS
 %nonassoc LESS GREATER EQUAL LESS_EQUAL GREATER_EQUAL NOT_EQUAL COMP_OP
-%right BETWEEN
+%right BETWEEN IN
 %left PLUS MINUS
 %left STAR SLASH
 %precedence SUBQUERY_AS_EXPR
@@ -154,6 +155,7 @@ class driver;
 %type <ValExpr*>					bool_value_expr
 %type <BoolLiteral>					truth_value
 %type <bool>						opt_symmetric
+%type <RelExpr*>					in_expr
 %type <ValExpr*>					bool_predicand
 %type <BinaryOp::Op>					comp_op
 %type <ValExpr*>					value_expr_no_parens
@@ -482,10 +484,14 @@ bool_predicand:
     common_value_expr						{ $$ = $common_value_expr; }
  |  bool_predicand[left] comp_op bool_predicand[right] %prec COMP_OP
  	{ $$ = new BinaryOp(@$, $left, $comp_op, $right); }
- |  bool_predicand[val] BETWEEN opt_symmetric bool_predicand[low] AND bool_predicand[high] %prec BETWEEN
+ |  bool_predicand[val] BETWEEN opt_symmetric bool_predicand[low] AND bool_predicand[high]	%prec BETWEEN
  	{ auto expr = new BetweenPred(@$, $val, $low, $high); expr->symmetric = $opt_symmetric; $$ = expr; }
- |  bool_predicand[val] NOT BETWEEN opt_symmetric bool_predicand[low] AND bool_predicand[high] %prec BETWEEN
+ |  bool_predicand[val] NOT BETWEEN opt_symmetric bool_predicand[low] AND bool_predicand[high]	%prec BETWEEN
  	{ auto expr = new BetweenPred(@$, $val, $low, $high); expr->symmetric = $opt_symmetric; $$ = UnaryOp::Not(expr); }
+ |  bool_predicand[val] IN in_expr[rel] 	%prec IN
+ 	{ $$ = new InPred(@$, $val, $rel); }
+ |  bool_predicand[val] NOT IN in_expr[rel]	%prec IN
+ 	{ $$ = UnaryOp::Not(new InPred(@$, $val, $rel)); }
  ;
 
 /*
@@ -495,6 +501,11 @@ opt_symmetric:
     SYMMETRIC		{ $$ = true; }
  |  ASYMMETRIC		{ $$ = false; }
  |  %empty		{ $$ = false; }
+ ;
+
+in_expr:
+    select_with_parens		{ $$ = $select_with_parens; }
+ |  LP value_expr_list RP	{ $$ = new ValuesExpr(@$, std::move($value_expr_list)); }
  ;
 
 value_expr_list:
@@ -513,8 +524,6 @@ common_value_expr:
  |  PLUS common_value_expr[inner]				{ $$ = $inner; }
  |  MINUS common_value_expr[inner]				{ $$ = new UnaryOp(@$, UnaryOp::Op::NEG, $inner); }
  ;
-
-
 
 comp_op:
     NOT_EQUAL		{ $$ = BinaryOp::Op::NOT_EQUAL; }

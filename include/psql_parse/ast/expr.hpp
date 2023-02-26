@@ -159,6 +159,13 @@ namespace psql_parse {
 		SetOp(location loc, RelExpr *left, Op op, RelExpr *right);
 	};
 
+	struct ValuesExpr: public RelExpr {
+		std::vector<std::unique_ptr<ValExpr>> rows;
+
+		ValuesExpr(location loc);
+		ValuesExpr(location loc, std::vector<std::unique_ptr<ValExpr>> rows);
+	};
+
 	struct RowSubquery: public ValExpr {
 		std::unique_ptr<RelExpr> subquery;
 
