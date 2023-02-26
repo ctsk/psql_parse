@@ -136,8 +136,8 @@ namespace psql_parse {
  		*/
 		const ValExpr* ASTERISK = nullptr;
 		std::vector<std::unique_ptr<ValExpr>> target_list;
-
 		std::vector<std::unique_ptr<RelExpr>> from_clause;
+		std::unique_ptr<ValExpr> where_clause;
 		std::optional<SetQuantifier> set_quantifier;
 
 		explicit QueryExpr(location loc);
