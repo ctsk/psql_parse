@@ -9,10 +9,6 @@
 
 namespace psql_parse {
 
-	struct Node {
-		const location loc;
-	};
-
 #define DEFAULT_SPACESHIP(Type) \
 	friend auto operator<=>(const Type&, const Type&) = default
 

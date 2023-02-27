@@ -2,14 +2,13 @@
 
 #include <cstdint>
 
-#include "common.hpp"
+#include "psql_parse/ast/common.hpp"
+#include "psql_parse/ast/nodes.hpp"
 
 namespace psql_parse {
 
     struct Expression: public Node {
-		virtual	~Expression() = default;
-		friend bool operator==(const Expression&, const Expression&);
-
+		virtual ExprPtrs asVariant() = 0;
 	protected:
 		explicit Expression(location loc);
 	};
@@ -20,33 +19,38 @@ namespace psql_parse {
 		explicit ValExpr(location loc);
 	};
 
-	/// <expr> AS <name>
-	struct AliasExpr: public ValExpr {
-		Name name;
-		std::unique_ptr<ValExpr> expr;
-		AliasExpr(location loc, std::string name, ValExpr *expr);
-	};
-
 	/// RelExpr: Expression kinds, whose result is a Bag of Tuples
 	struct RelExpr: public Expression {
 	protected:
 		explicit RelExpr(location loc);
 	};
 
+	/// <expr> AS <name>
+	struct AliasExpr: public ValExpr {
+		Name name;
+		std::unique_ptr<ValExpr> expr;
+		AliasExpr(location loc, std::string name, ValExpr *expr);
+
+		ADD_AS_VARIANT()
+	};
+
     struct IntegerLiteral: public ValExpr {
 		std::int64_t value;
 		IntegerLiteral(location loc, std::int64_t value);
+		ADD_AS_VARIANT()
 	};
 
     struct FloatLiteral: public ValExpr {
         double value;
         FloatLiteral(location loc, double value);
+		ADD_AS_VARIANT()
 	};
 
 	struct StringLiteral: public ValExpr {
 		std::string value;
 		StringLiteralType type;
 		StringLiteral(location loc, std::string&& value, StringLiteralType type);
+		ADD_AS_VARIANT()
 	};
 
 	enum class BoolLiteral {
@@ -59,6 +63,7 @@ namespace psql_parse {
 		Name name;
 
 		Var(location loc, std::string);
+		ADD_AS_VARIANT()
 	};
 
 	struct IsExpr: public ValExpr {
@@ -66,6 +71,7 @@ namespace psql_parse {
 		BoolLiteral truth_value;
 
 		IsExpr(location loc, ValExpr *inner, BoolLiteral truth_value);
+		ADD_AS_VARIANT()
 	};
 
 	struct UnaryOp: public ValExpr {
@@ -82,6 +88,8 @@ namespace psql_parse {
 		static UnaryOp* Not(ValExpr *expr) {
 			return new UnaryOp(expr->loc, UnaryOp::Op::NOT, expr);
 		}
+
+		ADD_AS_VARIANT()
 	};
 
 	struct BinaryOp: public ValExpr {
@@ -96,11 +104,13 @@ namespace psql_parse {
 		std::unique_ptr<ValExpr> right;
 
 		BinaryOp(location loc, ValExpr *left, Op op, ValExpr *right);
+		ADD_AS_VARIANT()
 	};
 
 	struct TableName: public RelExpr {
 		QualifiedName name;
 		TableName(location loc, QualifiedName name);
+		ADD_AS_VARIANT()
 	};
 
 	struct JoinExpr: public RelExpr {
@@ -123,6 +133,8 @@ namespace psql_parse {
 
 		void setNatural();
 		void setQualifier(ValExpr *expr);
+
+		ADD_AS_VARIANT()
 	};
 
 	enum class SetQuantifier {
@@ -162,6 +174,7 @@ namespace psql_parse {
 		std::optional<SetQuantifier> set_quantifier;
 
 		explicit QueryExpr(location loc);
+		ADD_AS_VARIANT()
 	};
 
 	struct OrderOp: public RelExpr {
@@ -169,6 +182,7 @@ namespace psql_parse {
 		std::vector<SortSpec> fields;
 
 		explicit OrderOp(location loc, RelExpr *expr, std::vector<SortSpec> fields);
+		ADD_AS_VARIANT()
 	};
 
 	struct SetOp: public RelExpr {
@@ -185,6 +199,7 @@ namespace psql_parse {
 		std::optional<SetQuantifier> quantifier;
 
 		SetOp(location loc, RelExpr *left, Op op, RelExpr *right);
+		ADD_AS_VARIANT()
 	};
 
 	struct ValuesExpr: public RelExpr {
@@ -192,12 +207,14 @@ namespace psql_parse {
 
 		explicit ValuesExpr(location loc);
 		ValuesExpr(location loc, std::vector<std::unique_ptr<ValExpr>> rows);
+		ADD_AS_VARIANT()
 	};
 
 	struct RowSubquery: public ValExpr {
 		std::unique_ptr<RelExpr> subquery;
 
 		RowSubquery(location loc, RelExpr *expr);
+		ADD_AS_VARIANT()
 	};
 
 	enum class Builtin { };
@@ -221,6 +238,7 @@ namespace psql_parse {
 		bool symmetric;
 
 		BetweenPred(location loc, ValExpr *val, ValExpr *low, ValExpr *high);
+		ADD_AS_VARIANT()
 	};
 
 	struct InPred: public ValExpr {
@@ -230,5 +248,6 @@ namespace psql_parse {
 		bool symmetric;
 
 		InPred(location loc, ValExpr *val, RelExpr *rows);
+		ADD_AS_VARIANT()
 	};
 }
