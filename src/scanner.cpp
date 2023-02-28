@@ -8,4 +8,8 @@ namespace psql_parse {
 		string_type = type;
 		string_buffer.clear();
 	}
+
+	void scanner::start_ident() {
+		ident_buffer.clear();
+	}
 }

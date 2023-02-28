@@ -11,6 +11,7 @@ bool psql_parse::driver::parse(std::istream &in) {
     scanner_->set_debug(trace_scanning_);
     parser p(*this);
     p.set_debug_level(trace_parsing_);
+	nf.clear();
     return p.parse() == 0;
 }
 

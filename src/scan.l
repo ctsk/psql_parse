@@ -57,6 +57,12 @@ xbitstart       [bB]{quote}
 xnationalstart  [nN]{quote}
 xhexstart       [xX]{quote}
 
+%x xident
+dquote          \"
+xidentstart     {dquote}
+xidentstop      {dquote}
+xidentinside    [^"]+
+
 %%
 
 %{
@@ -91,6 +97,12 @@ xhexstart       [xX]{quote}
                       }
 <xquoted>{xqinside}  { string_buffer.append(yytext); }
 
+{xidentstart}           { BEGIN(xident); start_ident(); }
+<xident>{xidentinside}  { ident_buffer.append(yytext); }
+<xident>{xidentstop}    {
+                            BEGIN(INITIAL);
+                            return psql_parse::parser::make_IDENTIFIER(ident_buffer, loc);
+                        }
 
 "("             { return psql_parse::parser::make_LP(loc); }
 ")"             { return psql_parse::parser::make_RP(loc); }
@@ -198,7 +210,10 @@ zone            { return psql_parse::parser::make_ZONE(loc); }
 
 
 {identifier}    {
-                    return psql_parse::parser::make_IDENTIFIER(yytext, loc);
+                    std::string ident(yytext);
+                    std::transform(ident.begin(), ident.end(), ident.begin(),
+                        [](unsigned char c){ return std::tolower(c); });
+                    return psql_parse::parser::make_IDENTIFIER(std::move(ident), loc);
                 }
 
 {decinteger}	{

@@ -21,9 +21,11 @@ namespace psql_parse {
 
 		/* STATE while lexing string literals */
 		std::string string_buffer;
+		std::string ident_buffer;
 		StringLiteralType string_type;
 
 		void start_string(StringLiteralType type);
+		void start_ident();
 
     public:
         explicit scanner(std::istream *in = nullptr, std::ostream *out = nullptr);

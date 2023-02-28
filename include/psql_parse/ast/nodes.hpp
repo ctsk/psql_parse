@@ -23,8 +23,9 @@ namespace psql_parse {
 			return node<UnaryOp>(loc, UnaryOp::Op::NOT, ptr);
 		}
 
-
-
+		void clear() {
+			locations.clear();
+		}
 
 	};
 }
