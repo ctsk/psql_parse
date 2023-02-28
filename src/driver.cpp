@@ -4,7 +4,7 @@ psql_parse::driver::driver()
 : scanner_(nullptr)
 , trace_scanning_(false)
 , trace_parsing_(false)
-, result_(nullptr) { }
+, result_() { }
 
 bool psql_parse::driver::parse(std::istream &in) {
     scanner_ = std::make_unique<scanner>(&in);
@@ -18,6 +18,6 @@ bool psql_parse::driver::parse(std::istream &in) {
     std::cerr << loc << " " << message << std::endl;
 }
 
-psql_parse::Statement* psql_parse::driver::getResult() {
+psql_parse::Statement& psql_parse::driver::getResult() {
     return result_;
 }

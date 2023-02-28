@@ -2,24 +2,11 @@
 
 #include <memory>
 
-#include "expr.hpp"
+#include "create.hpp"
+#include "select.hpp"
 
 namespace psql_parse {
-
-	class Statement: public Node {
-	protected:
-		explicit Statement(location loc);
-
-	public:
-		virtual ~Statement() = default;
-	};
-
-	class ExprStatement: public Statement {
-		std::unique_ptr<Expression> expr;
-
-	public:
-		ExprStatement(location loc, Expression* expr);
-
-		[[nodiscard]] const Expression* getExpr() const;
-	};
+	using Statement = std::variant<
+	        box<CreateStatement>,
+			box<SelectStatement>>;
 }

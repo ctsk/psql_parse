@@ -6,47 +6,84 @@
 
 namespace psql_parse {
 
-    struct Expression: public Node {
-		virtual	~Expression() = default;
-		friend bool operator==(const Expression&, const Expression&);
+	struct AliasExpr;
+	struct IntegerLiteral;
+	struct FloatLiteral;
+	struct StringLiteral;
+	struct UnaryOp;
+	struct BinaryOp;
+	struct RowSubquery;
+	struct Var;
+	struct IsExpr;
+	struct BetweenPred;
+	struct InPred;
+	struct SortSpec;
+	struct RowExpr;
 
-	protected:
-		explicit Expression(location loc);
-	};
+	struct JoinExpr;
+	struct TableName;
+	struct QueryExpr;
+	struct ValuesExpr;
+	struct SetOp;
+	struct OrderOp;
 
-	/// ValExpr: Expression kinds, whose result is a value;
-	struct ValExpr: public Expression {
-	protected:
-		explicit ValExpr(location loc);
-	};
+	using Expression = std::variant<
+			box<IntegerLiteral>,
+			box<FloatLiteral>,
+			box<StringLiteral>,
+			box<UnaryOp>,
+			box<BinaryOp>,
+			box<AliasExpr>,
+			box<RowExpr>,
+			box<RowSubquery>,
+			box<Var>,
+			box<IsExpr>,
+			box<BetweenPred>,
+			box<InPred>,
+			box<SortSpec>>;
 
+
+	using RelExpression = std::variant<
+			box<JoinExpr>,
+			box<TableName>,
+			box<QueryExpr>,
+			box<ValuesExpr>,
+			box<SetOp>,
+			box<OrderOp>>;
+	
 	/// <expr> AS <name>
-	struct AliasExpr: public ValExpr {
+	struct AliasExpr {
+		DEFAULT_EQ(AliasExpr);
+
 		Name name;
-		std::unique_ptr<ValExpr> expr;
-		AliasExpr(location loc, std::string name, ValExpr *expr);
+		Expression expr;
+
+		AliasExpr(std::string name, Expression expr);
 	};
 
-	/// RelExpr: Expression kinds, whose result is a Bag of Tuples
-	struct RelExpr: public Expression {
-	protected:
-		explicit RelExpr(location loc);
-	};
+    struct IntegerLiteral {
+		DEFAULT_EQ(IntegerLiteral);
 
-    struct IntegerLiteral: public ValExpr {
 		std::int64_t value;
-		IntegerLiteral(location loc, std::int64_t value);
+
+		explicit IntegerLiteral(std::int64_t value);
 	};
 
-    struct FloatLiteral: public ValExpr {
+    struct FloatLiteral {
+		DEFAULT_EQ(FloatLiteral);
+
         double value;
-        FloatLiteral(location loc, double value);
+
+        explicit FloatLiteral(double value);
 	};
 
-	struct StringLiteral: public ValExpr {
+	struct StringLiteral {
+		DEFAULT_EQ(StringLiteral);
+
 		std::string value;
 		StringLiteralType type;
-		StringLiteral(location loc, std::string&& value, StringLiteralType type);
+
+		StringLiteral(std::string&& value, StringLiteralType type);
 	};
 
 	enum class BoolLiteral {
@@ -55,55 +92,70 @@ namespace psql_parse {
 		UNKNOWN
 	};
 
-	struct Var: public ValExpr {
+	struct Var {
+		DEFAULT_EQ(Var);
+
 		Name name;
 
-		Var(location loc, std::string);
+		explicit Var(std::string);
 	};
 
-	struct IsExpr: public ValExpr {
-		std::unique_ptr<ValExpr> inner;
+	struct IsExpr {
+		DEFAULT_EQ(IsExpr);
+
+		Expression inner;
 		BoolLiteral truth_value;
 
-		IsExpr(location loc, ValExpr *inner, BoolLiteral truth_value);
+		IsExpr(Expression inner, BoolLiteral truth_value);
 	};
 
-	struct UnaryOp: public ValExpr {
+	struct UnaryOp {
+		DEFAULT_EQ(UnaryOp);
+
 		enum class Op {
 			NOT,
 			NEG
 		};
 
 		Op op;
-		std::unique_ptr<ValExpr> inner;
+		Expression inner;
 
-		UnaryOp(location loc, Op op, ValExpr *inner);
+		UnaryOp(Op op, Expression inner);
 
-		static UnaryOp* Not(ValExpr *expr) {
-			return new UnaryOp(expr->loc, UnaryOp::Op::NOT, expr);
+		static UnaryOp* Not(Expression expr) {
+			return new UnaryOp(UnaryOp::Op::NOT, std::move(expr));
 		}
 	};
 
-	struct BinaryOp: public ValExpr {
+	struct BinaryOp {
+		DEFAULT_EQ(BinaryOp);
+
 		enum class Op {
 			OR, AND,
 			ADD, SUB, MULT, DIV,
-			LESS, LESS_EQUAL, GREATER, GREATER_EQUAL, EQUAL, NOT_EQUAL
+			LESS, LESS_EQUAL,
+			GREATER, GREATER_EQUAL,
+			EQUAL, NOT_EQUAL
 		};
 
 		Op op;
-		std::unique_ptr<ValExpr> left;
-		std::unique_ptr<ValExpr> right;
+		Expression left;
+		Expression right;
 
-		BinaryOp(location loc, ValExpr *left, Op op, ValExpr *right);
+		BinaryOp(Expression left, Op op, Expression right);
 	};
 
-	struct TableName: public RelExpr {
+	struct TableName {
+		DEFAULT_EQ(TableName);
+
 		QualifiedName name;
-		TableName(location loc, QualifiedName name);
+
+		explicit TableName(QualifiedName name);
 	};
 
-	struct JoinExpr: public RelExpr {
+	struct JoinExpr {
+		DEFAULT_EQ(JoinExpr);
+
 		enum class Kind {
 			FULL,
 			LEFT,
@@ -113,16 +165,16 @@ namespace psql_parse {
 
 		Kind kind;
 		bool natural;
-		std::unique_ptr<ValExpr> qualifier;
+		Expression qualifier;
 		std::vector<Name> columns;
 
-		std::unique_ptr<RelExpr> first;
-		std::unique_ptr<RelExpr> second;
+		RelExpression first;
+		RelExpression second;
 
-		JoinExpr(location loc, RelExpr *first, Kind kind, RelExpr *second);
+		JoinExpr(RelExpression first, Kind kind, RelExpression second);
 
 		void setNatural();
-		void setQualifier(ValExpr *expr);
+		void setQualifier(Expression expr);
 	};
 
 	enum class SetQuantifier {
@@ -131,6 +183,8 @@ namespace psql_parse {
 	};
 
 	struct SortSpec {
+		DEFAULT_EQ(SortSpec);
+
 		enum class Order {
 			ASC,
 			DESC
@@ -142,36 +196,40 @@ namespace psql_parse {
 			LAST,
 		};
 
-		location loc;
-		std::unique_ptr<ValExpr> expr;
+		Expression expr;
 		Order order = Order::ASC;
 		NullOrder null_order = NullOrder::DEFAULT;
 
 		SortSpec();
-		SortSpec(location loc, ValExpr *expr);
+		explicit SortSpec(Expression expr);
 	};
 
-	struct QueryExpr: public RelExpr {
+	struct QueryExpr {
+		DEFAULT_EQ(QueryExpr);
+
 		/*
  		 * NOTE: nullptr = ASTERISK
  		*/
-		const ValExpr* ASTERISK = nullptr;
-		std::vector<std::unique_ptr<ValExpr>> target_list;
-		std::vector<std::unique_ptr<RelExpr>> from_clause;
-		std::unique_ptr<ValExpr> where_clause;
+		std::vector<Expression> target_list;
+		std::vector<RelExpression> from_clause;
+		Expression where_clause;
 		std::optional<SetQuantifier> set_quantifier;
 
-		explicit QueryExpr(location loc);
+		QueryExpr();
 	};
 
-	struct OrderOp: public RelExpr {
-		std::unique_ptr<RelExpr> expr;
-		std::vector<SortSpec> fields;
+	struct OrderOp {
+		DEFAULT_EQ(OrderOp);
 
-		explicit OrderOp(location loc, RelExpr *expr, std::vector<SortSpec> fields);
+		RelExpression expr;
+		std::vector<box<SortSpec>> fields;
+
+		explicit OrderOp(RelExpression expr, std::vector<box<SortSpec>> fields);
 	};
 
-	struct SetOp: public RelExpr {
+	struct SetOp {
+		DEFAULT_EQ(SetOp);
+
 		enum class Op {
 			UNION,
 			INTERSECT,
@@ -179,56 +237,55 @@ namespace psql_parse {
 		};
 
 		Op op;
-		std::unique_ptr<RelExpr> left;
-		std::unique_ptr<RelExpr> right;
-
+		RelExpression left;
+		RelExpression right;
 		std::optional<SetQuantifier> quantifier;
 
-		SetOp(location loc, RelExpr *left, Op op, RelExpr *right);
+		SetOp(RelExpression left, Op op, RelExpression right);
 	};
 
-	struct ValuesExpr: public RelExpr {
-		std::vector<std::unique_ptr<ValExpr>> rows;
+	struct ValuesExpr {
+		DEFAULT_EQ(ValuesExpr);
 
-		explicit ValuesExpr(location loc);
-		ValuesExpr(location loc, std::vector<std::unique_ptr<ValExpr>> rows);
+		std::vector<Expression> rows;
+
+		explicit ValuesExpr(std::vector<Expression> rows);
 	};
 
-	struct RowSubquery: public ValExpr {
-		std::unique_ptr<RelExpr> subquery;
+	struct RowExpr {
+		DEFAULT_EQ(RowExpr);
 
-		RowSubquery(location loc, RelExpr *expr);
+		std::vector<Expression> exprs;
+
+		RowExpr();
+		explicit RowExpr(std::vector<Expression> exprs);
+	};
+	struct RowSubquery {
+		DEFAULT_EQ(RowSubquery);
+
+		RelExpression subquery;
+
+		explicit RowSubquery(RelExpression expr);
 	};
 
-	enum class Builtin { };
+	struct BetweenPred {
+		DEFAULT_EQ(BetweenPred);
 
-	template<Builtin name, typename... Args>
-	requires ((std::is_same_v<Args, ValExpr> || std::is_same_v<Args, RelExpr>) || ...)
-	struct BuiltinFunc: public ValExpr {
-		std::vector<std::unique_ptr<Expression>> args;
-
-		BuiltinFunc(location loc, Args*... exprs)
-		: ValExpr(loc), args() {
-			(args.emplace_back(exprs), ...);
-		}
-	};
-
-	struct BetweenPred: public ValExpr {
-		std::unique_ptr<ValExpr> val;
-		std::unique_ptr<ValExpr> low;
-		std::unique_ptr<ValExpr> high;
-
+		Expression val;
+		Expression low;
+		Expression high;
 		bool symmetric;
 
-		BetweenPred(location loc, ValExpr *val, ValExpr *low, ValExpr *high);
+		BetweenPred(Expression val, Expression low, Expression high);
 	};
 
-	struct InPred: public ValExpr {
-		std::unique_ptr<ValExpr> val;
-		std::unique_ptr<RelExpr> rows;
+	struct InPred {
+		DEFAULT_EQ(InPred);
 
+		Expression val;
+		RelExpression rows;
 		bool symmetric;
 
-		InPred(location loc, ValExpr *val, RelExpr *rows);
+		InPred(Expression val, RelExpression rows);
 	};
 }

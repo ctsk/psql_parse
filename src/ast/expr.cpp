@@ -1,83 +1,72 @@
 #include "psql_parse/ast/expr.hpp"
 
 namespace psql_parse {
-	Expression::Expression(location loc)
-	: Node{loc} {}
 
-	bool operator==(const Expression &, const Expression &) {
-		return false;
-	}
+	IntegerLiteral::IntegerLiteral(int64_t value)
+	: value(value) {}
 
-	ValExpr::ValExpr(location loc)
-	: Expression(loc) {}
+	FloatLiteral::FloatLiteral(double value)
+	: value(value) {}
 
-	RelExpr::RelExpr(location loc)
-	: Expression(loc) {}
+	StringLiteral::StringLiteral(std::string &&value, StringLiteralType type)
+	: value(value), type(type) {}
 
-	IntegerLiteral::IntegerLiteral(location loc, int64_t value)
-	: ValExpr(loc), value(value) {}
+	UnaryOp::UnaryOp(UnaryOp::Op op, Expression inner)
+	: op(op), inner(std::move(inner)) {}
 
-	FloatLiteral::FloatLiteral(location loc, double value)
-	: ValExpr(loc), value(value) {}
+	BinaryOp::BinaryOp(Expression left, BinaryOp::Op op, Expression right)
+	: op(op), left(std::move(left)), right(std::move(right)) {}
 
-	StringLiteral::StringLiteral(location loc, std::string &&value, StringLiteralType type)
-	: ValExpr(loc), value(value), type(type) {}
+	AliasExpr::AliasExpr(std::string name, Expression expr)
+	: name(std::move(name)), expr(std::move(expr)) {}
 
-	UnaryOp::UnaryOp(location loc, UnaryOp::Op op, ValExpr *inner)
-	: ValExpr(loc), op(op), inner(inner) {}
-
-	BinaryOp::BinaryOp(location loc, ValExpr *left, BinaryOp::Op op, ValExpr *right)
-	: ValExpr(loc), op(op), left(left), right(right) {}
-
-	AliasExpr::AliasExpr(location loc, std::string name, ValExpr *expr)
-	: ValExpr(loc), name(std::move(name)), expr(expr) {}
-
-	JoinExpr::JoinExpr(location loc, RelExpr *first, JoinExpr::Kind kind, RelExpr *second)
-	: RelExpr(loc), kind(kind), natural(false), first(first), second(second) {}
+	JoinExpr::JoinExpr(RelExpression first, JoinExpr::Kind kind, RelExpression second)
+	: kind(kind), natural(false), first(std::move(first)), second(std::move(second)) {}
 
 	void JoinExpr::setNatural() {
 		natural = true;
 	}
 
-	void JoinExpr::setQualifier(ValExpr *expr) {
-		qualifier = std::unique_ptr<ValExpr>(expr);
+	void JoinExpr::setQualifier(Expression expr) {
+		qualifier = std::move(expr);
 	}
 
-	TableName::TableName(location loc, QualifiedName name)
-	: RelExpr(loc), name(std::move(name)) {}
+	TableName::TableName(QualifiedName name)
+	: name(std::move(name)) {}
 
-	QueryExpr::QueryExpr(location loc)
-	: RelExpr(loc) {}
+	QueryExpr::QueryExpr() = default;
 
-	SetOp::SetOp(location loc, RelExpr *left, SetOp::Op op, RelExpr *right)
-	: RelExpr(loc), op(op), left(left), right(right) {}
+	SetOp::SetOp(RelExpression left, SetOp::Op op, RelExpression right)
+	: op(op), left(std::move(left)), right(std::move(right)) {}
 
-	RowSubquery::RowSubquery(location loc, RelExpr *expr)
-	: ValExpr(loc), subquery(expr) { }
+	RowSubquery::RowSubquery(RelExpression expr)
+	: subquery(std::move(expr)) { }
 
-	Var::Var(location loc, std::string name)
-	: ValExpr(loc), name(std::move(name)) {}
+	Var::Var(std::string name)
+	: name(std::move(name)) {}
 
-	IsExpr::IsExpr(location loc, ValExpr *inner, BoolLiteral truth_value)
-	: ValExpr(loc), inner(inner), truth_value(truth_value) {}
+	IsExpr::IsExpr(Expression inner, BoolLiteral truth_value)
+	: inner(std::move(inner)), truth_value(truth_value) {}
 
-	BetweenPred::BetweenPred(location loc, ValExpr *val, ValExpr *low, ValExpr *high)
-	: ValExpr(loc), val(val), low(low), high(high), symmetric(false) {}
+	BetweenPred::BetweenPred(Expression val, Expression low, Expression high)
+	: val(std::move(val)), low(std::move(low)), high(std::move(high)), symmetric(false) {}
 
-	ValuesExpr::ValuesExpr(location loc)
-	: RelExpr(loc) {}
+	ValuesExpr::ValuesExpr(std::vector<Expression> rows)
+	: rows(std::move(rows)) {}
 
-	ValuesExpr::ValuesExpr(location loc, std::vector<std::unique_ptr<ValExpr>> rows)
-	: RelExpr(loc), rows(std::move(rows)) {}
+	InPred::InPred(Expression val, RelExpression rows)
+	: val(std::move(val)), rows(std::move(rows)), symmetric(false) {}
 
-	InPred::InPred(location loc, ValExpr *val, RelExpr *rows)
-	: ValExpr(loc), val(val), rows(rows) {}
-
-	SortSpec::SortSpec(location loc, ValExpr *expr)
-	: loc(loc), expr(expr) {}
+	SortSpec::SortSpec(Expression expr)
+	: expr(std::move(expr)) {}
 
 	SortSpec::SortSpec() = default;
 
-	OrderOp::OrderOp(location loc, RelExpr *expr, std::vector<SortSpec> fields)
-	: RelExpr(loc), expr(expr), fields(std::move(fields)) {}
+	OrderOp::OrderOp(RelExpression expr, std::vector<box<SortSpec>> fields)
+	: expr(std::move(expr)), fields(std::move(fields)) {}
+
+	RowExpr::RowExpr() = default;
+
+	RowExpr::RowExpr(std::vector<Expression> exprs)
+	: exprs(std::move(exprs)) {}
 }

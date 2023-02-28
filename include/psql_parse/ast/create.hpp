@@ -4,7 +4,7 @@
 #include <variant>
 #include <vector>
 
-#include "psql_parse/ast/stmt.hpp"
+#include "psql_parse/ast/expr.hpp"
 
 namespace psql_parse {
 
@@ -27,7 +27,7 @@ namespace psql_parse {
 	using ColumnDefault = std::variant<
 			UserSpec,
 			V_NULL,
-			std::unique_ptr<Expression>>;
+			Expression>;
 
 	enum class ReferentialAction {
 		CASCADE,
@@ -37,7 +37,7 @@ namespace psql_parse {
 	};
 
 	struct ReferentialTriggeredAction {
-		DEFAULT_SPACESHIP(ReferentialTriggeredAction);
+		DEFAULT_EQ(ReferentialTriggeredAction);
 		ReferentialAction on_delete, on_update;
 	};
 
@@ -54,7 +54,7 @@ namespace psql_parse {
 	};
 
 	struct References {
-		DEFAULT_SPACESHIP(References);
+		DEFAULT_EQ(References);
 
 		QualifiedName rel_name;
 		std::vector<Name> col_names;
@@ -64,18 +64,18 @@ namespace psql_parse {
 
 	using ColumnConstraint = std::variant<
 			ConstraintType,
-			std::unique_ptr<References>>;
+			box<References>>;
 
 	struct NamedColumnConstraint {
-		DEFAULT_SPACESHIP(NamedColumnConstraint);
+		DEFAULT_EQ(NamedColumnConstraint);
 		std::optional<QualifiedName> name = std::nullopt;
 		std::variant<
 				ConstraintType,
-				std::unique_ptr<References>> constraint;
+				box<References>> constraint;
 	};
 
 	struct ColumnDef {
-		DEFAULT_SPACESHIP(ColumnDef);
+		DEFAULT_EQ(ColumnDef);
 
 		Name name;
 		std::variant<DataType, DomainName> type;
@@ -90,16 +90,17 @@ namespace psql_parse {
 	};
 
 	struct TableUniqueConstraint {
-		DEFAULT_SPACESHIP(TableUniqueConstraint);
+		DEFAULT_EQ(TableUniqueConstraint);
 		std::vector<Name> column_names;
 	};
 	struct TablePrimaryKeyConstraint {
-		DEFAULT_SPACESHIP(TablePrimaryKeyConstraint);
+		DEFAULT_EQ(TablePrimaryKeyConstraint);
 		std::vector<Name> column_names;
 	};
 	struct TableForeignKeyConstraint {
-		DEFAULT_SPACESHIP(TableForeignKeyConstraint);
-		std::vector<Name> column_names; std::unique_ptr<References> references;
+		DEFAULT_EQ(TableForeignKeyConstraint);
+		std::vector<Name> column_names;
+		box<References> references;
 	};
 
 	using TableConstraint = std::variant<
@@ -107,17 +108,15 @@ namespace psql_parse {
 			TablePrimaryKeyConstraint,
 			TableForeignKeyConstraint>;
 
-	struct CreateStatement: public Statement {
+	struct CreateStatement {
 		QualifiedName rel_name;
 		std::optional<Temporary> temp = std::nullopt;
 		std::optional<OnCommit> on_commit = std::nullopt;
 		std::vector<ColumnDef> column_defs;
 		std::vector<TableConstraint> table_constraints;
 
-		CreateStatement(location loc, QualifiedName relName);
-		CreateStatement(location loc, QualifiedName relName, std::optional<Temporary> temp, std::optional<OnCommit> onCommit, std::vector<std::variant<ColumnDef, TableConstraint>> elements);
-
-		bool equals(const CreateStatement& other) const;
+		explicit CreateStatement(QualifiedName relName);
+		CreateStatement(QualifiedName relName, std::optional<Temporary> temp, std::optional<OnCommit> onCommit, std::vector<std::variant<ColumnDef, TableConstraint>> elements);
 	};
 }
 

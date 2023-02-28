@@ -4,6 +4,7 @@
 #include <vector>
 #include <optional>
 
+#include "psql_parse/ast/nodes.hpp"
 #include "psql_parse/scanner.hpp"
 
 namespace psql_parse {
@@ -16,7 +17,9 @@ namespace psql_parse {
         bool trace_scanning_;
         bool trace_parsing_;
 
-		Statement* result_{};
+		Statement result_;
+
+		NodeFactory nf;
 
         [[maybe_unused]] static void error(const psql_parse::location&, const std::string&);
 
@@ -25,6 +28,6 @@ namespace psql_parse {
 
         bool parse(std::istream& in);
 
-		Statement* getResult();
+		Statement& getResult();
     };
 }

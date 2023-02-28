@@ -13,6 +13,7 @@
 %define api.parser.class {parser}
 %define api.namespace    { psql_parse }
 %define api.value.type   variant
+%define api.value.automove
 %define api.token.raw
 %define api.token.constructor
 %define api.token.prefix {TOK_}
@@ -49,6 +50,9 @@ class driver;
 
 #undef yylex
 #define yylex driver.scanner_->lex
+
+#define mkNode driver.nf.node
+#define mkNotNode driver.nf.notNode
 
 }
 
@@ -98,89 +102,88 @@ class driver;
 %left STAR SLASH
 %precedence SUBQUERY_AS_EXPR
 %left LP RP
-
 %left JOIN CROSS LEFT FULL RIGHT INNER NATURAL
 
-%type <Statement*>		pseudo_start
-%type <ValExpr*>		numeric_literal
-%type <ValExpr*>		signed_numeric_literal
-%type <ValExpr*>		unsigned_numeric_literal
-%type <StringLiteral*>		general_literal
-%type <ValExpr*>		literal
-%type <ValExpr*>		unsigned_literal
-// %type <Statement*>		ExprStatement
-%type <Statement*>		CreateStatement
+%type <Statement>						pseudo_start
+%type <Expression>						numeric_literal
+%type <Expression>						signed_numeric_literal
+%type <Expression>						unsigned_numeric_literal
+%type <StringLiteral*>						general_literal
+%type <Expression>						literal
+%type <Expression>						unsigned_literal
+%type <Statement>						CreateStatement
+
+%type <DataType>						data_type
+%type <bool>							opt_with_time_zone
+%type <uint64_t>						opt_time_precision
+%type <uint64_t>						opt_timestamp_precision
+%type <std::optional<uint64_t>>					precision_spec
+%type <std::pair<std::optional<uint64_t>, uint64_t>>		precision_scale_spec
+%type <uint64_t>						opt_length_spec
+%type <uint64_t>						length_spec
+
+%type <std::vector<Name>>					identifier_list
+%type <QualifiedName>						qualified_name
+%type <std::optional<Temporary>>				opt_temporary
+%type <std::optional<OnCommit>>					opt_on_commit
+%type <std::vector<std::variant<ColumnDef, TableConstraint>>>	column_defs_and_constraints
+%type <std::variant<ColumnDef, TableConstraint>>		column_def_and_constraint
+%type <ColumnDef>						column_def
+%type <std::variant<DataType, DomainName>>			column_type
+%type <std::optional<ColumnDefault>>				opt_default_clause
+%type <ColumnDefault>						default_clause
+%type <ColumnDefault>						default_option
+%type <std::vector<NamedColumnConstraint>>			opt_column_constraint_def
+%type <std::vector<NamedColumnConstraint>>			column_constraint_defs
+%type <NamedColumnConstraint>					column_constraint_def
+%type <std::optional<QualifiedName>>				opt_constraint_name
+%type <ColumnConstraint>					column_constraint
+%type <References*>						references_spec
+%type <std::pair<QualifiedName, std::vector<Name>>>		ref_table_cols
+%type <MatchOption>						opt_match
+%type <MatchOption>						match_type
+%type <ReferentialTriggeredAction>				opt_referential_triggered_action
+%type <ReferentialTriggeredAction>				referential_triggered_action
+%type <ReferentialAction>					referential_action
+%type <ReferentialAction>					update_rule
+%type <ReferentialAction>					delete_rule
+%type <std::optional<QualifiedName>>				opt_collate_clause
+%type <TableConstraint>						table_constraint_def
+
+%type <Expression>						value_expr
+%type <std::vector<Expression>>					value_expr_list
+%type <Expression>						common_value_expr
+%type <Expression>						bool_value_expr
+%type <BoolLiteral>						truth_value
+%type <bool>							opt_symmetric
+%type <RelExpression>						in_expr
+%type <Expression>						bool_predicand
+%type <BinaryOp::Op>						comp_op
+%type <Expression>						value_expr_no_parens
+
+%type <Statement>						SelectStatement
+%type <RelExpression>						select_no_parens
+%type <RelExpression>						select_with_parens
+%type <RelExpression>						simple_select
+%type <RelExpression>						select_clause
+%type <std::optional<SetQuantifier>>				opt_set_quantifier
+
+%type <std::vector<box<SortSpec>>>				order_by_clause
+%type <std::vector<box<SortSpec>>>				sort_spec_list
+%type <box<SortSpec>>						sort_spec
+%type <SortSpec::Order>						opt_asc_or_desc
+%type <SortSpec::NullOrder>					null_ordering
+
+%type <std::vector<Expression>>					target_list
+%type <Expression>						target_element
+%type <std::vector<RelExpression>>				from_clause
+%type <std::vector<RelExpression>>				from_list
+%type <RelExpression>						table_ref
+%type <JoinExpr*>						joined_table
+%type <JoinExpr::Kind>						join_type
+%type <Expression>						where_clause
 
 
-%type <DataType>					data_type
-%type <bool>						opt_with_time_zone
-%type <uint64_t>					opt_time_precision
-%type <uint64_t>					opt_timestamp_precision
-%type <std::optional<uint64_t>>				precision_spec
-%type <std::pair<std::optional<uint64_t>, uint64_t>>	precision_scale_spec
-%type <uint64_t>					opt_length_spec
-%type <uint64_t>					length_spec
-
-%type <std::vector<Name>>				identifier_list
-%type <QualifiedName>					qualified_name
-%type <std::optional<Temporary>>			opt_temporary
-%type <std::optional<OnCommit>>				opt_on_commit
-%type <std::vector<std::variant<ColumnDef, TableConstraint>>> column_defs_and_constraints
-%type <std::variant<ColumnDef, TableConstraint>>	column_def_and_constraint
-%type <ColumnDef>					column_def
-%type <std::variant<DataType, DomainName>>		column_type
-%type <std::optional<ColumnDefault>>			opt_default_clause
-%type <ColumnDefault>					default_clause
-%type <ColumnDefault>					default_option
-%type <std::vector<NamedColumnConstraint>>		opt_column_constraint_def
-%type <std::vector<NamedColumnConstraint>>		column_constraint_defs
-%type <NamedColumnConstraint>				column_constraint_def
-%type <std::optional<QualifiedName>>			opt_constraint_name
-%type <ColumnConstraint>				column_constraint
-%type <References*>					references_spec
-%type <std::pair<QualifiedName, std::vector<Name>>>	ref_table_cols
-%type <MatchOption>					opt_match
-%type <MatchOption>					match_type
-%type <ReferentialTriggeredAction>			opt_referential_triggered_action
-%type <ReferentialTriggeredAction>			referential_triggered_action
-%type <ReferentialAction>				referential_action
-%type <ReferentialAction>				update_rule
-%type <ReferentialAction>				delete_rule
-%type <std::optional<QualifiedName>>			opt_collate_clause
-%type <TableConstraint>					table_constraint_def
-
-%type <ValExpr*>					value_expr
-%type <std::vector<std::unique_ptr<ValExpr>>>		value_expr_list
-%type <ValExpr*>					common_value_expr
-%type <ValExpr*>					bool_value_expr
-%type <BoolLiteral>					truth_value
-%type <bool>						opt_symmetric
-%type <RelExpr*>					in_expr
-%type <ValExpr*>					bool_predicand
-%type <BinaryOp::Op>					comp_op
-%type <ValExpr*>					value_expr_no_parens
-
-%type <SelectStatement*>				SelectStatement
-%type <RelExpr*>					select_no_parens
-%type <RelExpr*>					select_with_parens
-%type <RelExpr*>					simple_select
-%type <RelExpr*>					select_clause
-%type <std::optional<SetQuantifier>>			opt_set_quantifier
-
-%type <std::vector<SortSpec>>				order_by_clause
-%type <std::vector<SortSpec>>				sort_spec_list
-%type <SortSpec>					sort_spec
-%type <SortSpec::Order>					opt_asc_or_desc
-%type <SortSpec::NullOrder>				null_ordering
-
-%type <std::vector<std::unique_ptr<ValExpr>>>		target_list
-%type <ValExpr*>					target_element
-%type <std::vector<std::unique_ptr<RelExpr>>>		from_clause
-%type <std::vector<std::unique_ptr<RelExpr>>>		from_list
-%type <RelExpr*>					table_ref
-%type <JoinExpr*>					joined_table
-%type <JoinExpr::Kind>					join_type
-%type <ValExpr*>					where_clause
 
 
 %%
@@ -191,8 +194,6 @@ pseudo_start:
     CreateStatement	{ driver.result_ = $CreateStatement; }
  |  SelectStatement	{ driver.result_ = $SelectStatement; }
  ;
-
-// ExprStatement: value_expr	{ $$ = new ExprStatement(@$, $value_expr); } ;
 
 /*
  *   Basics building blocks
@@ -206,55 +207,55 @@ numeric_literal: signed_numeric_literal	| unsigned_numeric_literal ;
 
 signed_numeric_literal:
     PLUS unsigned_numeric_literal	{ $$ = $unsigned_numeric_literal; }
- |  MINUS unsigned_numeric_literal	{ $$ = new UnaryOp(@$, UnaryOp::Op::NEG, $unsigned_numeric_literal); }
+ |  MINUS unsigned_numeric_literal	{ $$ = mkNode<UnaryOp>(@$, UnaryOp::Op::NEG, $unsigned_numeric_literal); }
  ;
 
 unsigned_numeric_literal:
-    INTEGER_VALUE	{ $$ = new IntegerLiteral(@INTEGER_VALUE, $INTEGER_VALUE); }
- |  FLOAT_VALUE		{ $$ = new FloatLiteral(@FLOAT_VALUE, $FLOAT_VALUE); }
+    INTEGER_VALUE	{ $$ = mkNode<IntegerLiteral>(@INTEGER_VALUE, $INTEGER_VALUE); }
+ |  FLOAT_VALUE		{ $$ = mkNode<FloatLiteral>(@FLOAT_VALUE, $FLOAT_VALUE); }
  ;
 
 general_literal:
-    STRING_VALUE	{ $$ = new StringLiteral(@STRING_VALUE, std::move($STRING_VALUE), StringLiteralType::CHAR); }
- |  BIT_VALUE		{ $$ = new StringLiteral(@BIT_VALUE, std::move($BIT_VALUE), StringLiteralType::BIT); }
- |  HEX_VALUE		{ $$ = new StringLiteral(@HEX_VALUE, std::move($HEX_VALUE), StringLiteralType::HEX); }
- |  NATIONAL_VALUE	{ $$ = new StringLiteral(@NATIONAL_VALUE, std::move($NATIONAL_VALUE), StringLiteralType::NATIONAL); }
+    STRING_VALUE	{ $$ = mkNode<StringLiteral>(@STRING_VALUE, $STRING_VALUE, StringLiteralType::CHAR); }
+ |  BIT_VALUE		{ $$ = mkNode<StringLiteral>(@BIT_VALUE, $BIT_VALUE, StringLiteralType::BIT); }
+ |  HEX_VALUE		{ $$ = mkNode<StringLiteral>(@HEX_VALUE, $HEX_VALUE, StringLiteralType::HEX); }
+ |  NATIONAL_VALUE	{ $$ = mkNode<StringLiteral>(@NATIONAL_VALUE, $NATIONAL_VALUE, StringLiteralType::NATIONAL); }
 
 /* Missing: INTERVAL */
 data_type:
-    DECIMAL precision_scale_spec[spec]		{ $$ = DecimalType { $spec.first, $spec.second }; }
- |  FLOAT precision_spec[spec]			{ $$ = FloatType { $spec }; }
- |  INTEGER 					{ $$ = IntegerType { }; }
- |  NUMERIC precision_scale_spec[spec]		{ $$ = NumericType { $spec.first, $spec.second }; }
- |  SMALLINT 					{ $$ = SmallIntType { }; }
- |  REAL	 				{ $$ = RealType { }; }
- |  DOUBLE PRECISION				{ $$ = DoublePrecisionType { }; }
- |  CHARACTER opt_length_spec 			{ $$ = CharType { $opt_length_spec }; }
- |  CHARACTER VARYING length_spec		{ $$ = VarCharType { $length_spec }; }
- |  NATIONAL CHARACTER opt_length_spec		{ $$ = NationalCharType { $opt_length_spec }; }
- |  NATIONAL CHARACTER VARYING length_spec	{ $$ = NationalVarCharType { $length_spec }; }
- |  NCHAR opt_length_spec			{ $$ = NationalCharType { $opt_length_spec }; }
- |  NCHAR VARYING length_spec			{ $$ = NationalVarCharType { $length_spec }; }
- |  BIT opt_length_spec				{ $$ = Bit { $opt_length_spec }; }
- |  BIT VARYING length_spec			{ $$ = VarBit { $length_spec }; }
- |  DATE					{ $$ = DateType { }; }
+    DECIMAL precision_scale_spec[spec]				{ $$ = DecimalType { $spec.first, $spec.second }; }
+ |  FLOAT precision_spec[spec]					{ $$ = FloatType { $spec }; }
+ |  INTEGER 							{ $$ = IntegerType { }; }
+ |  NUMERIC precision_scale_spec[spec]				{ $$ = NumericType { $spec.first, $spec.second }; }
+ |  SMALLINT 							{ $$ = SmallIntType { }; }
+ |  REAL	 						{ $$ = RealType { }; }
+ |  DOUBLE PRECISION						{ $$ = DoublePrecisionType { }; }
+ |  CHARACTER opt_length_spec 					{ $$ = CharType { $opt_length_spec }; }
+ |  CHARACTER VARYING length_spec				{ $$ = VarCharType { $length_spec }; }
+ |  NATIONAL CHARACTER opt_length_spec				{ $$ = NationalCharType { $opt_length_spec }; }
+ |  NATIONAL CHARACTER VARYING length_spec			{ $$ = NationalVarCharType { $length_spec }; }
+ |  NCHAR opt_length_spec					{ $$ = NationalCharType { $opt_length_spec }; }
+ |  NCHAR VARYING length_spec					{ $$ = NationalVarCharType { $length_spec }; }
+ |  BIT opt_length_spec						{ $$ = Bit { $opt_length_spec }; }
+ |  BIT VARYING length_spec					{ $$ = VarBit { $length_spec }; }
+ |  DATE							{ $$ = DateType { }; }
  |  TIME opt_time_precision opt_with_time_zone			{ $$ = TimeType { $opt_time_precision, $opt_with_time_zone }; }
  |  TIMESTAMP opt_timestamp_precision opt_with_time_zone	{ $$ = TimeType { $opt_timestamp_precision, $opt_with_time_zone }; }
  ;
 
 opt_with_time_zone:
-    WITH TIME ZONE	{ $$ = true; }
- |  %empty		{ $$ = false; }
+    WITH TIME ZONE						{ $$ = true; }
+ |  %empty							{ $$ = false; }
  ;
 
 opt_time_precision:
-    LP INTEGER_VALUE[time_precision] RP		{ $$ = $time_precision; }
- |  %empty					{ $$ = 0; }
+    LP INTEGER_VALUE[time_precision] RP				{ $$ = $time_precision; }
+ |  %empty							{ $$ = 0; }
  ;
 
 opt_timestamp_precision:
-    LP INTEGER_VALUE[timestamp_precision] RP	{ $$ = $timestamp_precision; }
- |  %empty					{ $$ = 6; }
+    LP INTEGER_VALUE[timestamp_precision] RP			{ $$ = $timestamp_precision; }
+ |  %empty							{ $$ = 6; }
  ;
 
 precision_scale_spec:
@@ -265,23 +266,23 @@ precision_scale_spec:
 
 precision_spec:
     LP INTEGER_VALUE RP
- |  %empty		{ $$ = std::nullopt; }
+ |  %empty							{ $$ = std::nullopt; }
  ;
 
 opt_length_spec:
     length_spec
- |  %empty		{ $$ = 1; }
+ |  %empty							{ $$ = 1; }
  ;
 
-length_spec: LP INTEGER_VALUE RP { $$ = $INTEGER_VALUE; };
+length_spec: LP INTEGER_VALUE RP 				{ $$ = $INTEGER_VALUE; };
 
 /*
  *   Handling Identifiers
  */
 
 identifier_list:
-    IDENTIFIER[elem] COMMA identifier_list[vec]	{ $vec.push_back(std::move($elem)); std::swap($$, $vec); }
- |  IDENTIFIER[elem]				{ $$ = std::vector<Name> { std::move($elem) }; }
+    IDENTIFIER[elem] COMMA identifier_list[vec]			{ $vec.push_back($elem); $$ = $vec; }
+ |  IDENTIFIER[elem]						{ $$ = std::vector<Name> { $elem }; }
  ;
 
 qualified_name:
@@ -295,116 +296,136 @@ qualified_name:
  */
 CreateStatement:
     CREATE opt_temporary TABLE qualified_name[table_name] LP column_defs_and_constraints[table_elems] RP opt_on_commit
-    { $$ = new CreateStatement(@$, $table_name, $opt_temporary, $opt_on_commit, std::move($table_elems)); }
+	{
+		$$ = mkNode<CreateStatement>(@$, $table_name, $opt_temporary, $opt_on_commit, $table_elems);
+	}
     ;
 
 opt_temporary:
-    LOCAL TEMPORARY	{ $$ = Temporary::LOCAL; }
- |  GLOBAL TEMPORARY    { $$ = Temporary::GLOBAL; }
- |  %empty		{ $$ = std::nullopt; }
+    LOCAL TEMPORARY						{ $$ = Temporary::LOCAL; }
+ |  GLOBAL TEMPORARY						{ $$ = Temporary::GLOBAL; }
+ |  %empty							{ $$ = std::nullopt; }
  ;
 
 opt_on_commit:
-    ON COMMIT DELETE ROWS   { $$ = OnCommit::DELETE; }
- |  ON COMMIT PRESERVE ROWS { $$ = OnCommit::PRESERVE; }
- |  %empty		    { $$ = std::nullopt; }
+    ON COMMIT DELETE ROWS					{ $$ = OnCommit::DELETE; }
+ |  ON COMMIT PRESERVE ROWS 					{ $$ = OnCommit::PRESERVE; }
+ |  %empty		    					{ $$ = std::nullopt; }
  ;
 
 column_defs_and_constraints:
     column_def_and_constraint[elem] COMMA column_defs_and_constraints[vec]
-    { $vec.push_back(std::move($elem)); std::swap($vec, $$); }
+	{
+		$vec.push_back($elem); $$ = $vec;
+	}
  |  column_def_and_constraint[elem]
-    { $$ = std::vector<std::variant<ColumnDef, TableConstraint>>(); $$.push_back(std::move($elem)); }
+ 	{
+ 		$$ = std::vector<std::variant<ColumnDef, TableConstraint>>(); $$.push_back($elem);
+ 	}
  ;
 
 column_def_and_constraint:
-    column_def			{ $$ = std::move($column_def); }
- |  table_constraint_def	{ $$ = std::move($table_constraint_def); }
+    column_def
+ |  table_constraint_def
  ;
 
 column_def:
     IDENTIFIER[column_name] column_type opt_default_clause opt_column_constraint_def opt_collate_clause
-    { $$ = ColumnDef($column_name, $column_type);
-      $$.col_default = std::move($opt_default_clause);
-      $$.col_constraint = std::move($opt_column_constraint_def);
-      $$.collate = $opt_collate_clause; }
+	{
+		$$ = ColumnDef($column_name, $column_type);
+		$$.col_default = $opt_default_clause;
+		$$.col_constraint = $opt_column_constraint_def;
+		$$.collate = $opt_collate_clause;
+	}
  ;
 
 column_type:
-    data_type				{ $$ = $data_type; }
- |  qualified_name[domain_name]		{ $$ = $domain_name; }
+    data_type
+ |  qualified_name[domain_name]
  ;
 
 opt_default_clause:
-    default_clause		{ $$ = std::move($default_clause); }
- |  %empty			{ $$ = std::nullopt; }
+    default_clause
+ |  %empty							{ $$ = std::nullopt; }
  ;
 
 default_clause:
-    DEFAULT default_option	{ $$ = std::move($default_option); }
+    DEFAULT default_option					{ $$ = $default_option; }
  ;
 
 default_option:
-   literal		{ $$ = std::unique_ptr<Expression>($literal); }
+   literal							{ $$ = $literal; }
  /*| datetime value function */
- |  USER		{ $$ = UserSpec::CURRENT_USER; }
- |  CURRENT_USER	{ $$ = UserSpec::CURRENT_USER; }
- |  SESSION_USER	{ $$ = UserSpec::SESSION_USER; }
- |  SYSTEM_USER		{ $$ = UserSpec::SYSTEM_USER; }
- |  NULL		{ $$ = V_NULL { }; }
+ |  USER							{ $$ = UserSpec::CURRENT_USER; }
+ |  CURRENT_USER						{ $$ = UserSpec::CURRENT_USER; }
+ |  SESSION_USER						{ $$ = UserSpec::SESSION_USER; }
+ |  SYSTEM_USER							{ $$ = UserSpec::SYSTEM_USER; }
+ |  NULL							{ $$ = V_NULL { }; }
  ;
 
 opt_column_constraint_def:
-    column_constraint_defs	{ $$ = std::move($column_constraint_defs); }
- |  %empty			{ $$ = std::vector<NamedColumnConstraint>(); }
+    column_constraint_defs
+ |  %empty							{ $$ = std::vector<NamedColumnConstraint>(); }
  ;
 
 column_constraint_defs:
-    column_constraint_def[elem] column_constraint_defs[vec]	{ $vec.push_back(std::move($elem)); std::swap($vec, $$); }
+    column_constraint_def[elem] column_constraint_defs[vec]	{ $vec.push_back($elem); $$ = $vec; }
  |  column_constraint_def[elem]
-   { $$ = std::vector<NamedColumnConstraint>(); $$.push_back(std::move($elem)); }
+	{
+  		$$ = std::vector<NamedColumnConstraint>(); $$.push_back($elem);
+  	}
  ;
 
 column_constraint_def:
     opt_constraint_name column_constraint /* opt_constraint_attributes */
-    { $$ = NamedColumnConstraint { $opt_constraint_name, std::move($column_constraint) }; }
+	{
+		$$ = NamedColumnConstraint { $opt_constraint_name, $column_constraint };
+	}
  ;
 
 opt_constraint_name:
-    CONSTRAINT qualified_name 	{ $$ = $qualified_name; }
- |  %empty			{ $$ = std::nullopt; }
+    CONSTRAINT qualified_name 					{ $$ = $qualified_name; }
+ |  %empty							{ $$ = std::nullopt; }
  ;
 
 column_constraint:
-    NOT NULL		{ $$ = ConstraintType::NOT_NULL; }
- |  UNIQUE		{ $$ = ConstraintType::UNIQUE; }
- |  PRIMARY KEY		{ $$ = ConstraintType::PRIMARY_KEY; }
- |  references_spec	{ $$ = std::unique_ptr<References>($references_spec); }
+    NOT NULL							{ $$ = ConstraintType::NOT_NULL; }
+ |  UNIQUE							{ $$ = ConstraintType::UNIQUE; }
+ |  PRIMARY KEY							{ $$ = ConstraintType::PRIMARY_KEY; }
+ |  references_spec						{ $$ = $references_spec; }
 /* |  check_constraint_def */
  ;
 
 references_spec:
     REFERENCES ref_table_cols opt_match opt_referential_triggered_action
-    { $$ = new References($ref_table_cols.first, std::move($ref_table_cols.second), $opt_match, $opt_referential_triggered_action); }
+    	{
+    		$$ = new References { $ref_table_cols.first, $ref_table_cols.second, $opt_match, $opt_referential_triggered_action };
+	}
  ;
 
 ref_table_cols:
-    qualified_name[table_name] LP identifier_list RP	{ $$ = std::make_pair($table_name, $identifier_list); }
+    qualified_name[table_name] LP identifier_list RP		{ $$ = std::make_pair($table_name, $identifier_list); }
  ;
 
 opt_match:
-    MATCH match_type	{ $$ = $match_type; }
- |  %empty		{ $$ = MatchOption::NONE; }
+    MATCH match_type						{ $$ = $match_type; }
+ |  %empty							{ $$ = MatchOption::NONE; }
  ;
 
 match_type:
-    FULL	{ $$ = MatchOption::FULL; }
- |  PARTIAL	{ $$ = MatchOption::PARTIAL; }
+    FULL							{ $$ = MatchOption::FULL; }
+ |  PARTIAL							{ $$ = MatchOption::PARTIAL; }
  ;
 
 opt_referential_triggered_action:
-    referential_triggered_action	{ $$ = $referential_triggered_action; }
- |  %empty				{ $$ = ReferentialTriggeredAction { .on_delete = ReferentialAction::NO_ACTION, .on_update = ReferentialAction::NO_ACTION }; }
+    referential_triggered_action				{ $$ = $referential_triggered_action; }
+ |  %empty
+ 	{
+ 		$$ = ReferentialTriggeredAction {
+ 			.on_delete = ReferentialAction::NO_ACTION,
+ 			.on_update = ReferentialAction::NO_ACTION
+ 		};
+ 	}
  ;
 
 referential_triggered_action:
@@ -415,29 +436,32 @@ referential_triggered_action:
  ;
 
 referential_action:
-    CASCADE		{ $$ = ReferentialAction::CASCADE; }
- |  SET NULL		{ $$ = ReferentialAction::SET_NULL; }
- |  SET DEFAULT		{ $$ = ReferentialAction::SET_DEFAULT; }
- |  NO ACTION		{ $$ = ReferentialAction::NO_ACTION; }
+    CASCADE							{ $$ = ReferentialAction::CASCADE; }
+ |  SET NULL							{ $$ = ReferentialAction::SET_NULL; }
+ |  SET DEFAULT							{ $$ = ReferentialAction::SET_DEFAULT; }
+ |  NO ACTION							{ $$ = ReferentialAction::NO_ACTION; }
  ;
 
 update_rule:
-    ON UPDATE referential_action { $$ = $referential_action; }
+    ON UPDATE referential_action 				{ $$ = $referential_action; }
  ;
 
 delete_rule:
-    ON DELETE referential_action { $$ = $referential_action; }
+    ON DELETE referential_action 				{ $$ = $referential_action; }
  ;
 
 opt_collate_clause:
-    COLLATE qualified_name	{ $$ = std::move($qualified_name); }
- |  %empty			{ $$ = std::nullopt; }
+    COLLATE qualified_name					{ $$ = $qualified_name; }
+ |  %empty							{ $$ = std::nullopt; }
  ;
 
 table_constraint_def:
-    UNIQUE LP identifier_list RP			{ $$ = TableUniqueConstraint($identifier_list); }
- |  PRIMARY KEY LP identifier_list RP			{ $$ = TablePrimaryKeyConstraint($identifier_list); }
- |  FOREIGN KEY LP identifier_list RP references_spec	{ $$ = TableForeignKeyConstraint($identifier_list, std::unique_ptr<References>($references_spec)); }
+    UNIQUE LP identifier_list RP				{ $$ = TableUniqueConstraint { $identifier_list }; }
+ |  PRIMARY KEY LP identifier_list RP				{ $$ = TablePrimaryKeyConstraint { $identifier_list }; }
+ |  FOREIGN KEY LP identifier_list RP references_spec
+	{
+		$$ = TableForeignKeyConstraint { $identifier_list, $references_spec };
+	}
 /* |  check_constraint_definition */
  ;
 
@@ -445,103 +469,97 @@ table_constraint_def:
  *  Expressions
  */
 
-/*
-expr:
-     value_expr { $$ = $1; }
-  ;
-
-// Corresponds to <value expression>
-// "unrestricted" expressions
-value_expr:
-    literal
- |  value_expr[left] OR  value_expr[right]		{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::OR, $right); }
- |  value_expr[left] AND  value_expr[right]		{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::AND, $right); }
- |  value_expr[left] PLUS  value_expr[right]		{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::ADD, $right); }
- |  value_expr[left] MINUS value_expr[right]		{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::SUB, $right); }
- ;
-
-value_expr_primary: ;
-*/
-
 value_expr:
     bool_value_expr
- |  LP value_expr_list COMMA value_expr RP
- |  ROW LP value_expr_list RP
+ |  LP value_expr_list COMMA value_expr[last] RP
+ 	{
+ 		$value_expr_list.push_back($last);
+ 		$$ = mkNode<RowExpr>(@$, $value_expr_list);
+ 	}
+ |  ROW LP value_expr_list RP					{ $$ =  mkNode<RowExpr>(@$, $value_expr_list); }
  ;
 
 bool_value_expr:
     bool_predicand						{ $$ = $bool_predicand; }
- |  bool_value_expr[left] OR bool_value_expr[right]		{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::OR, $right); }
- |  bool_value_expr[left] AND bool_value_expr[right]		{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::AND, $right); }
+ |  bool_value_expr[left] OR bool_value_expr[right]		{ $$ = mkNode<BinaryOp>(@$, $left, BinaryOp::Op::OR, $right); }
+ |  bool_value_expr[left] AND bool_value_expr[right]		{ $$ = mkNode<BinaryOp>(@$, $left, BinaryOp::Op::AND, $right); }
  // NOT and IS accept bool_predicand as child, preventing `NOT NOT expr` / `expr IS TRUE IS FALSE`
- |  NOT bool_predicand[inner]					{ $$ = new UnaryOp(@$, UnaryOp::Op::NOT, $inner); }
- |  bool_predicand[inner] IS truth_value			{ $$ = new IsExpr(@$, $inner, $truth_value); }
- |  bool_predicand[inner] IS NOT truth_value %prec IS		{ $$ = UnaryOp::Not(new IsExpr(@$, $inner, $truth_value)); }
+ |  NOT bool_predicand[inner]					{ $$ = mkNode<UnaryOp>(@$, UnaryOp::Op::NOT, $inner); }
+ |  bool_predicand[inner] IS truth_value			{ $$ = mkNode<IsExpr>(@$, $inner, $truth_value); }
+ |  bool_predicand[inner] IS NOT truth_value %prec IS		{ $$ = mkNotNode<IsExpr>(@$, $inner, $truth_value); }
  ;
 
 truth_value:
-    TRUE	{ $$ = BoolLiteral::TRUE; }
- |  FALSE	{ $$ = BoolLiteral::FALSE; }
- |  UNKNOWN	{ $$ = BoolLiteral::UNKNOWN; }
+    TRUE							{ $$ = BoolLiteral::TRUE; }
+ |  FALSE							{ $$ = BoolLiteral::FALSE; }
+ |  UNKNOWN							{ $$ = BoolLiteral::UNKNOWN; }
  ;
 
 bool_predicand:
     common_value_expr						{ $$ = $common_value_expr; }
  |  bool_predicand[left] comp_op bool_predicand[right] %prec COMP_OP
- 	{ $$ = new BinaryOp(@$, $left, $comp_op, $right); }
+ 	{
+ 		$$ = mkNode<BinaryOp>(@$, $left, $comp_op, $right);
+ 	}
  |  bool_predicand[val] BETWEEN opt_symmetric bool_predicand[low] AND bool_predicand[high]	%prec BETWEEN
- 	{ auto expr = new BetweenPred(@$, $val, $low, $high); expr->symmetric = $opt_symmetric; $$ = expr; }
+ 	{
+ 		auto expr = mkNode<BetweenPred>(@$, $val, $low, $high);
+ 		expr->symmetric = $opt_symmetric;
+ 		$$ = expr;
+ 	}
  |  bool_predicand[val] NOT BETWEEN opt_symmetric bool_predicand[low] AND bool_predicand[high]	%prec BETWEEN
- 	{ auto expr = new BetweenPred(@$, $val, $low, $high); expr->symmetric = $opt_symmetric; $$ = UnaryOp::Not(expr); }
- |  bool_predicand[val] IN in_expr[rel] 	%prec IN
- 	{ $$ = new InPred(@$, $val, $rel); }
- |  bool_predicand[val] NOT IN in_expr[rel]	%prec IN
- 	{ $$ = UnaryOp::Not(new InPred(@$, $val, $rel)); }
+ 	{
+ 		auto expr = mkNode<BetweenPred>(@$, $val, $low, $high);
+ 		expr->symmetric = $opt_symmetric;
+ 		$$ = mkNode<UnaryOp>(@$, UnaryOp::Op::NOT, expr);
+ 	}
+ |  bool_predicand[val] IN in_expr[rel] 	%prec IN	{ $$ = mkNode<InPred>(@$, $val, $rel); }
+ |  bool_predicand[val] NOT IN in_expr[rel]	%prec IN 	{ $$ = mkNotNode<InPred>(@$, $val, $rel); }
  ;
 
 /*
  *  In accordance with the standard, if neither symmetric or asymmetric is specified, then asymmetric is implicit
  */
 opt_symmetric:
-    SYMMETRIC		{ $$ = true; }
- |  ASYMMETRIC		{ $$ = false; }
- |  %empty		{ $$ = false; }
+    SYMMETRIC							{ $$ = true; }
+ |  ASYMMETRIC							{ $$ = false; }
+ |  %empty							{ $$ = false; }
  ;
 
 in_expr:
-    select_with_parens		{ $$ = $select_with_parens; }
- |  LP value_expr_list RP	{ $$ = new ValuesExpr(@$, std::move($value_expr_list)); }
+    select_with_parens						{ $$ = $select_with_parens; }
+ |  LP value_expr_list RP					{ $$ = mkNode<ValuesExpr>(@$, $value_expr_list); }
  ;
 
 value_expr_list:
-    value_expr[elem]						{ $$ = std::vector<std::unique_ptr<ValExpr>>(); $$.emplace_back($elem); }
- |  value_expr_list[list] COMMA value_expr[elem]		{ $list.emplace_back($elem); std::swap($$, $list); }
+    value_expr[elem]						{ $$ = std::vector<Expression>(); $$.emplace_back($elem); }
+ |  value_expr_list[list] COMMA value_expr[elem]		{ $list.emplace_back($elem); $$ = $list; }
  ;
 
 common_value_expr:
-    select_with_parens		%prec SUBQUERY_AS_EXPR		{ $$ = new RowSubquery(@$, $select_with_parens); }
+    select_with_parens		%prec SUBQUERY_AS_EXPR		{ $$ = mkNode<RowSubquery>(@$, $select_with_parens); }
  |  LP value_expr RP						{ $$ = $value_expr; }
  |  value_expr_no_parens					{ $$ = $value_expr_no_parens; }
- |  common_value_expr[left] MINUS common_value_expr[right]	{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::SUB, $right); }
- |  common_value_expr[left] PLUS common_value_expr[right]	{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::ADD, $right); }
- |  common_value_expr[left] SLASH common_value_expr[right]	{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::MULT, $right); }
- |  common_value_expr[left] STAR common_value_expr[right]	{ $$ = new BinaryOp(@$, $left, BinaryOp::Op::DIV, $right); }
+ |  common_value_expr[left] MINUS common_value_expr[right]	{ $$ = mkNode<BinaryOp>(@$, $left, BinaryOp::Op::SUB, $right); }
+ |  common_value_expr[left] PLUS common_value_expr[right]	{ $$ = mkNode<BinaryOp>(@$, $left, BinaryOp::Op::ADD, $right); }
+ |  common_value_expr[left] SLASH common_value_expr[right]	{ $$ = mkNode<BinaryOp>(@$, $left, BinaryOp::Op::MULT, $right); }
+ |  common_value_expr[left] STAR common_value_expr[right]	{ $$ = mkNode<BinaryOp>(@$, $left, BinaryOp::Op::DIV, $right); }
  |  PLUS common_value_expr[inner]				{ $$ = $inner; }
- |  MINUS common_value_expr[inner]				{ $$ = new UnaryOp(@$, UnaryOp::Op::NEG, $inner); }
+ |  MINUS common_value_expr[inner]				{ $$ = mkNode<UnaryOp>(@$, UnaryOp::Op::NEG, $inner); }
  ;
 
 comp_op:
-    NOT_EQUAL		{ $$ = BinaryOp::Op::NOT_EQUAL; }
- |  EQUAL		{ $$ = BinaryOp::Op::EQUAL; }
- |  LESS_EQUAL		{ $$ = BinaryOp::Op::LESS_EQUAL; }
- |  LESS		{ $$ = BinaryOp::Op::LESS; }
- |  GREATER_EQUAL	{ $$ = BinaryOp::Op::GREATER_EQUAL; }
- |  GREATER		{ $$ = BinaryOp::Op::GREATER; }
+    NOT_EQUAL							{ $$ = BinaryOp::Op::NOT_EQUAL; }
+ |  EQUAL							{ $$ = BinaryOp::Op::EQUAL; }
+ |  LESS_EQUAL							{ $$ = BinaryOp::Op::LESS_EQUAL; }
+ |  LESS							{ $$ = BinaryOp::Op::LESS; }
+ |  GREATER_EQUAL						{ $$ = BinaryOp::Op::GREATER_EQUAL; }
+ |  GREATER							{ $$ = BinaryOp::Op::GREATER; }
  ;
 
 value_expr_no_parens:
-    unsigned_literal	{ $$ = $unsigned_literal; }
- |  IDENTIFIER		{ $$ = new Var(@$, $IDENTIFIER); }
+    unsigned_literal						{ $$ = $unsigned_literal; }
+ |  IDENTIFIER							{ $$ = mkNode<Var>(@$, $IDENTIFIER); }
  ;
 
 /************
@@ -551,13 +569,13 @@ value_expr_no_parens:
  ************/
 
 SelectStatement:
-    select_no_parens	{ $$ = new SelectStatement($select_no_parens); }
- |  select_with_parens	{ $$ = new SelectStatement($select_with_parens); }
+    select_no_parens						{ $$ = mkNode<SelectStatement>(@$, $select_no_parens); }
+ |  select_with_parens						{ $$ = mkNode<SelectStatement>(@$, $select_with_parens); }
  ;
 
 select_with_parens:
-    LP select_no_parens RP		{ $$ = $select_no_parens; }
- |  LP select_with_parens[inner] RP	{ $$ = $inner; }
+    LP select_no_parens RP					{ $$ = $select_no_parens; }
+ |  LP select_with_parens[inner] RP				{ $$ = $inner; }
  ;
 
 /*
@@ -565,60 +583,75 @@ select_with_parens:
  */
 select_no_parens:
     simple_select
- |  select_clause order_by_clause
-    { $$ = new OrderOp(@$, $select_clause, std::move($order_by_clause)); }
+ |  select_clause order_by_clause				{ $$ = mkNode<OrderOp>(@$, $select_clause, $order_by_clause); }
  ;
 
 select_clause: simple_select | select_with_parens ;
 
 order_by_clause:
-    ORDER BY sort_spec_list { $$ = std::move($sort_spec_list); }
+    ORDER BY sort_spec_list					{ $$ = $sort_spec_list; }
  ;
 
 sort_spec_list:
-    sort_spec					{ $$ = std::vector<SortSpec>(); }
- |  sort_spec_list[list] COMMA sort_spec	{ $list.push_back(std::move($sort_spec)); std::swap($$, $list); }
+    sort_spec							{ $$ = std::vector<box<SortSpec>>(); }
+ |  sort_spec_list[list] COMMA sort_spec			{ $list.push_back($sort_spec); $$ = $list; }
  ;
 
 sort_spec:
     value_expr opt_asc_or_desc null_ordering
-    { $$ = SortSpec(@$, $value_expr); $$.order = $opt_asc_or_desc; $$.null_order = $null_ordering; }
+	{
+		$$ = mkNode<SortSpec>(@$, $value_expr);
+		$$->order = $opt_asc_or_desc;
+		$$->null_order = $null_ordering;
+	}
  ;
 
 opt_asc_or_desc:
-    ASC		{ $$ = SortSpec::Order::ASC; }
- |  DESC	{ $$ = SortSpec::Order::DESC; }
- |  %empty	{ $$ = SortSpec::Order::ASC; }
+    ASC								{ $$ = SortSpec::Order::ASC; }
+ |  DESC							{ $$ = SortSpec::Order::DESC; }
+ |  %empty							{ $$ = SortSpec::Order::ASC; }
  ;
 
 null_ordering:
-    NULLS FIRST	{ $$ = SortSpec::NullOrder::FIRST; }
- |  NULLS LAST	{ $$ = SortSpec::NullOrder::LAST; }
- |  %empty	{ $$ = SortSpec::NullOrder::DEFAULT; }
+    NULLS FIRST							{ $$ = SortSpec::NullOrder::FIRST; }
+ |  NULLS LAST							{ $$ = SortSpec::NullOrder::LAST; }
+ |  %empty							{ $$ = SortSpec::NullOrder::DEFAULT; }
  ;
 
 simple_select:
     SELECT opt_set_quantifier target_list from_clause where_clause
  	{
- 		auto expr = new QueryExpr(@$);
-		expr->target_list = std::move($target_list);
-		expr->from_clause = std::move($from_clause);
-		expr->where_clause = std::unique_ptr<ValExpr>($where_clause);
+ 		auto expr = mkNode<QueryExpr>(@$);
+		expr->target_list = $target_list;
+		expr->from_clause = $from_clause;
+		expr->where_clause = $where_clause;
 		expr->set_quantifier = $opt_set_quantifier;
 		$$ = expr;
 	}
  |  select_clause[left] UNION opt_set_quantifier[quant] select_clause[right]
-    { auto expr = new SetOp(@$, $left, SetOp::Op::UNION, $right); expr->quantifier = $quant; $$ = expr; }
+	{
+		auto expr = mkNode<SetOp>(@$, $left, SetOp::Op::UNION, $right);
+		expr->quantifier = $quant;
+		$$ = expr;
+	}
  |  select_clause[left] INTERSECT opt_set_quantifier[quant] select_clause[right]
-    { auto expr = new SetOp(@$, $left, SetOp::Op::INTERSECT, $right); expr->quantifier = $quant; $$ = expr; }
+    	{
+    		auto expr = mkNode<SetOp>(@$, $left, SetOp::Op::INTERSECT, $right);
+    		expr->quantifier = $quant;
+		$$ = expr;
+	}
  |  select_clause[left] EXCEPT opt_set_quantifier[quant] select_clause[right]
-    { auto expr = new SetOp(@$, $left, SetOp::Op::EXCEPT, $right); expr->quantifier = $quant; $$ = expr; }
+	{
+		auto expr = mkNode<SetOp>(@$, $left, SetOp::Op::EXCEPT, $right);
+		expr->quantifier = $quant;
+		$$ = expr;
+	}
  ;
 
 opt_set_quantifier:
-    ALL		{ $$ = SetQuantifier::ALL; }
- |  DISTINCT	{ $$ = SetQuantifier::DISTINCT; }
- |  %empty	{ $$ = std::nullopt; }
+    ALL								{ $$ = SetQuantifier::ALL; }
+ |  DISTINCT							{ $$ = SetQuantifier::DISTINCT; }
+ |  %empty							{ $$ = std::nullopt; }
  ;
 
 
@@ -633,62 +666,74 @@ opt_set_quantifier:
  *  MISSING: <qualified asterisk>
  */
 target_list:
-   target_element				{ $$ = std::vector<std::unique_ptr<ValExpr>>(); $$.emplace_back($target_element); }
- | target_list[list] COMMA target_element	{ $list.emplace_back($target_element); std::swap($$, $list); }
+   target_element						{ $$ = std::vector<Expression>(); $$.emplace_back($target_element); }
+ | target_list[list] COMMA target_element			{ $list.emplace_back($target_element); $$ = $list; }
  ;
 
 target_element:
     value_expr
- |  value_expr AS IDENTIFIER[name]	{ $$ = new AliasExpr(@$, $name, $value_expr); }
- |  STAR  				{ $$ = nullptr; }
+ |  value_expr AS IDENTIFIER[name]				{ $$ = mkNode<AliasExpr>(@$, $name, $value_expr); }
+ |  STAR  							{ $$; }
  ;
 
 from_clause:
-    FROM from_list			{ $$ = std::move($from_list); }
- |  %empty 				{ $$ = std::vector<std::unique_ptr<RelExpr>>(); }
+    FROM from_list						{ $$ = $from_list; }
+ |  %empty 							{ $$ = std::vector<RelExpression>(); }
  ;
 
 from_list:
-    table_ref				{ $$ = std::vector<std::unique_ptr<RelExpr>>(); $$.emplace_back($table_ref);}
- |  from_list[list] COMMA table_ref	{ $list.emplace_back($table_ref); std::swap($$, $list); }
+    table_ref							{ $$ = std::vector<RelExpression>(); $$.emplace_back($table_ref);}
+ |  from_list[list] COMMA table_ref				{ $list.emplace_back($table_ref); $$ = $list; }
  ;
 
 /*
  *  MISSING: alias_clause
  */
 table_ref:
-    qualified_name[table_name]		{ $$ = new TableName(@$, $table_name); }
- |  select_with_parens			{ $$ = $select_with_parens; }
- |  joined_table			{ $$ = $joined_table; }
+    qualified_name[table_name]					{ $$ = mkNode<TableName>(@$, $table_name); }
+ |  select_with_parens						{ $$ = $select_with_parens; }
+ |  joined_table						{ $$ = $joined_table; }
  ;
 
 joined_table:
-    LP joined_table RP 					{ $$ = $2; }
- |  table_ref[a] CROSS JOIN table_ref[b]		{ $$ = new JoinExpr(@$, $a, JoinExpr::Kind::INNER, $b); }
+    LP joined_table RP 						{ $$ = $2; }
+ |  table_ref[a] CROSS JOIN table_ref[b]			{ $$ = mkNode<JoinExpr>(@$, $a, JoinExpr::Kind::INNER, $b); }
  |  table_ref[a] join_type JOIN table_ref[b] ON value_expr[join_qual]
- 	{ $$ = new JoinExpr(@$, $a, $join_type, $b); $$->setQualifier($join_qual); }
+	{
+		$$ = mkNode<JoinExpr>(@$, $a, $join_type, $b);
+		$$->setQualifier($join_qual);
+	}
  |  table_ref[a] join_type JOIN table_ref[b] USING LP identifier_list[names] RP
- 	{ $$ = new JoinExpr(@$, $a, $join_type, $b); $$->columns = std::move($names); }
+ 	{
+ 		$$ = mkNode<JoinExpr>(@$, $a, $join_type, $b);
+ 		$$->columns = $names;
+ 	}
  |  table_ref[a] JOIN table_ref[b] ON value_expr[join_qual]
- 	{ $$ = new JoinExpr(@$, $a, JoinExpr::Kind::INNER, $b); $$->setQualifier($join_qual); }
+ 	{
+ 		$$ = mkNode<JoinExpr>(@$, $a, JoinExpr::Kind::INNER, $b);
+ 		$$->setQualifier($join_qual);
+ 	}
  |  table_ref[a] JOIN table_ref[b] USING LP identifier_list[names] RP
-	{ $$ = new JoinExpr(@$, $a, JoinExpr::Kind::INNER, $b); $$->columns = std::move($names); }
- |  table_ref[a] NATURAL join_type JOIN table_ref[b]		{ $$ = new JoinExpr(@$, $a, $join_type, $b); $$->setNatural(); }
- |  table_ref[a] NATURAL JOIN table_ref[b]			{ $$ = new JoinExpr(@$, $a, JoinExpr::Kind::INNER, $b); $$->setNatural(); }
+	{
+		$$ = mkNode<JoinExpr>(@$, $a, JoinExpr::Kind::INNER, $b);
+		$$->columns = $names;
+	}
+ |  table_ref[a] NATURAL join_type JOIN table_ref[b]		{ $$ = mkNode<JoinExpr>(@$, $a, $join_type, $b); $$->setNatural(); }
+ |  table_ref[a] NATURAL JOIN table_ref[b]			{ $$ = mkNode<JoinExpr>(@$, $a, JoinExpr::Kind::INNER, $b); $$->setNatural(); }
 
 join_type:
-    FULL opt_outer	{ $$ = JoinExpr::Kind::FULL; }
- |  LEFT opt_outer	{ $$ = JoinExpr::Kind::LEFT; }
- |  RIGHT opt_outer	{ $$ = JoinExpr::Kind::RIGHT; }
- |  INNER		{ $$ = JoinExpr::Kind::INNER; }
+    FULL opt_outer						{ $$ = JoinExpr::Kind::FULL; }
+ |  LEFT opt_outer						{ $$ = JoinExpr::Kind::LEFT; }
+ |  RIGHT opt_outer						{ $$ = JoinExpr::Kind::RIGHT; }
+ |  INNER							{ $$ = JoinExpr::Kind::INNER; }
  ;
 
 // outer is just noise
 opt_outer: OUTER | %empty ;
 
 where_clause:
-    WHERE value_expr 	{ $$ = $value_expr; }
- |  %empty		{ $$ = nullptr; }
+    WHERE value_expr 						{ $$ = $value_expr; }
+ |  %empty							{ $$; }
  ;
 
 %%
