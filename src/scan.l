@@ -157,6 +157,7 @@ full            { return psql_parse::parser::make_FULL(loc); }
 global          { return psql_parse::parser::make_GLOBAL(loc); }
 grouping        { return psql_parse::parser::make_GROUPING(loc); }
 group           { return psql_parse::parser::make_GROUP(loc); }
+having          { return psql_parse::parser::make_HAVING(loc); }
 inner           { return psql_parse::parser::make_INNER(loc); }
 integer         { return psql_parse::parser::make_INTEGER(loc); }
 intersect       { return psql_parse::parser::make_INTERSECT(loc); }

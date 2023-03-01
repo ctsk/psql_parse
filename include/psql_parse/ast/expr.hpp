@@ -246,6 +246,7 @@ namespace psql_parse {
 		std::vector<RelExpression> from_clause;
 		Expression where_clause;
 		std::optional<GroupClause> group_clause;
+		Expression having_clause;
 		std::optional<SetQuantifier> set_quantifier;
 
 		QueryExpr();

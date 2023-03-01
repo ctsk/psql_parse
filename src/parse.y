@@ -84,7 +84,7 @@ class driver;
 
 %token 	ACTION ALL AND ASYMMETRIC ASC AS BETWEEN BIT BY CASCADE CHARACTER COLLATE COMMIT CONSTRAINT
 	CREATE CROSS CUBE CURRENT_USER DATE DECIMAL DEFAULT DELETE DESC DISTINCT DOUBLE EXCEPT FALSE FIRST
-	FLOAT FOREIGN FROM FULL GLOBAL GROUPING GROUP INNER INTEGER INTERSECT IN JOIN KEY LAST LEFT LOCAL MATCH
+	FLOAT FOREIGN FROM FULL GLOBAL GROUPING GROUP HAVING INNER INTEGER INTERSECT IN JOIN KEY LAST LEFT LOCAL MATCH
 	NATIONAL NATURAL NO NOT NCHAR NULLS NULL NUMERIC ON ORDER OR OUTER PARTIAL PRECISION
 	PRESERVE PRIMARY REAL REFERENCES RIGHT ROLLUP ROWS ROW SESSION_USER SETS SET
 	SMALLINT SELECT SYMMETRIC SYSTEM_USER TABLE TEMPORARY TIMESTAMP TIME TRUE
@@ -194,6 +194,8 @@ class driver;
 %type <box<Rollup>>						rollup_list
 %type <box<Cube>>						cube_list
 %type <box<GroupingSets>>					grouping_sets
+
+%type <Expression>						having_clause
 
 
 %%
@@ -629,13 +631,14 @@ null_ordering:
  ;
 
 simple_select:
-    SELECT opt_set_quantifier target_list from_clause where_clause group_clause
+    SELECT opt_set_quantifier target_list from_clause where_clause group_clause having_clause
  	{
  		auto expr = mkNode<QueryExpr>(@$);
 		expr->target_list = $target_list;
 		expr->from_clause = $from_clause;
 		expr->where_clause = $where_clause;
 		expr->group_clause = $group_clause;
+		expr->having_clause = $having_clause;
 		expr->set_quantifier = $opt_set_quantifier;
 		$$ = expr;
 	}
@@ -809,6 +812,11 @@ grouping_sets:
     GROUPING SETS LP group_by_list RP				{ $$ = mkNode<GroupingSets>(@$); $$->sets = $group_by_list; }
  ;
 
+
+having_clause:
+    HAVING value_expr						{ $$ = $value_expr; }
+ |  %empty							{ $$; }
+ ;
 
 %%
 
