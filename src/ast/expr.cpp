@@ -48,6 +48,9 @@ namespace psql_parse {
 	IsExpr::IsExpr(Expression inner, BoolLiteral truth_value)
 	: inner(std::move(inner)), truth_value(truth_value) {}
 
+	Collate::Collate(Var* var, QualifiedName collation)
+	: var(var), collation(std::move(collation)) {}
+
 	BetweenPred::BetweenPred(Expression val, Expression low, Expression high)
 	: val(std::move(val)), low(std::move(low)), high(std::move(high)), symmetric(false) {}
 
@@ -69,4 +72,9 @@ namespace psql_parse {
 
 	RowExpr::RowExpr(std::vector<Expression> exprs)
 	: exprs(std::move(exprs)) {}
+
+	GroupingSet::GroupingSet() = default;
+	GroupingSets::GroupingSets() = default;
+	Rollup::Rollup() = default;
+	Cube::Cube() = default;
 }

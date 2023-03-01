@@ -14,11 +14,17 @@ namespace psql_parse {
 	struct BinaryOp;
 	struct RowSubquery;
 	struct Var;
+	struct Collate;
 	struct IsExpr;
 	struct BetweenPred;
 	struct InPred;
 	struct SortSpec;
 	struct RowExpr;
+
+	struct GroupingSet;
+	struct GroupingSets;
+	struct Rollup;
+	struct Cube;
 
 	struct JoinExpr;
 	struct TableName;
@@ -37,11 +43,21 @@ namespace psql_parse {
 			box<RowExpr>,
 			box<RowSubquery>,
 			box<Var>,
+			box<Collate>,
 			box<IsExpr>,
 			box<BetweenPred>,
 			box<InPred>,
-			box<SortSpec>>;
+			box<SortSpec>,
+			box<GroupingSet>,
+			box<GroupingSets>,
+			box<Rollup>,
+			box<Cube>>;
 
+	using Grouping = std::variant<
+			box<GroupingSet>,
+			box<GroupingSets>,
+			box<Rollup>,
+			box<Cube>>;
 
 	using RelExpression = std::variant<
 			box<JoinExpr>,
@@ -98,6 +114,15 @@ namespace psql_parse {
 		Name name;
 
 		explicit Var(std::string);
+	};
+
+	struct Collate {
+		DEFAULT_EQ(Collate);
+
+		box<Var> var;
+		QualifiedName collation;
+
+		Collate(Var* var, QualifiedName collation);
 	};
 
 	struct IsExpr {
@@ -204,6 +229,13 @@ namespace psql_parse {
 		explicit SortSpec(Expression expr);
 	};
 
+	struct GroupClause {
+		DEFAULT_EQ(GroupClause);
+
+		std::optional<SetQuantifier> group_quantifier;
+		std::vector<Grouping> group_clause;
+	};
+
 	struct QueryExpr {
 		DEFAULT_EQ(QueryExpr);
 
@@ -213,6 +245,7 @@ namespace psql_parse {
 		std::vector<Expression> target_list;
 		std::vector<RelExpression> from_clause;
 		Expression where_clause;
+		std::optional<GroupClause> group_clause;
 		std::optional<SetQuantifier> set_quantifier;
 
 		QueryExpr();
@@ -260,6 +293,39 @@ namespace psql_parse {
 		RowExpr();
 		explicit RowExpr(std::vector<Expression> exprs);
 	};
+
+	struct GroupingSet {
+		DEFAULT_EQ(GroupingSet);
+
+		std::vector<Expression> columns;
+
+		GroupingSet();
+	};
+
+	struct GroupingSets {
+		DEFAULT_EQ(GroupingSets);
+
+		std::vector<Grouping> sets;
+
+		GroupingSets();
+	};
+
+	struct Rollup {
+		DEFAULT_EQ(Rollup);
+
+		std::vector<box<GroupingSet>> sets;
+
+		Rollup();
+	};
+
+	struct Cube {
+		DEFAULT_EQ(Cube);
+
+		std::vector<box<GroupingSet>> sets;
+
+		Cube();
+	};
+
 	struct RowSubquery {
 		DEFAULT_EQ(RowSubquery);
 

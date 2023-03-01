@@ -137,6 +137,7 @@ commit          { return psql_parse::parser::make_COMMIT(loc); }
 constraint      { return psql_parse::parser::make_CONSTRAINT(loc); }
 create          { return psql_parse::parser::make_CREATE(loc); }
 cross           { return psql_parse::parser::make_CROSS(loc); }
+cube            { return psql_parse::parser::make_CUBE(loc); }
 current_user    { return psql_parse::parser::make_CURRENT_USER(loc); }
 date            { return psql_parse::parser::make_DATE(loc); }
 decimal         { return psql_parse::parser::make_DECIMAL(loc); }
@@ -154,6 +155,8 @@ foreign         { return psql_parse::parser::make_FOREIGN(loc); }
 from            { return psql_parse::parser::make_FROM(loc); }
 full            { return psql_parse::parser::make_FULL(loc); }
 global          { return psql_parse::parser::make_GLOBAL(loc); }
+grouping        { return psql_parse::parser::make_GROUPING(loc); }
+group           { return psql_parse::parser::make_GROUP(loc); }
 inner           { return psql_parse::parser::make_INNER(loc); }
 integer         { return psql_parse::parser::make_INTEGER(loc); }
 intersect       { return psql_parse::parser::make_INTERSECT(loc); }
@@ -184,10 +187,12 @@ primary         { return psql_parse::parser::make_PRIMARY(loc); }
 real            { return psql_parse::parser::make_REAL(loc); }
 references      { return psql_parse::parser::make_REFERENCES(loc); }
 right           { return psql_parse::parser::make_RIGHT(loc); }
+rollup          { return psql_parse::parser::make_ROLLUP(loc); }
 rows            { return psql_parse::parser::make_ROWS(loc); }
 row             { return psql_parse::parser::make_ROW(loc); }
 select          { return psql_parse::parser::make_SELECT(loc); }
 session_user    { return psql_parse::parser::make_SESSION_USER(loc); }
+sets            { return psql_parse::parser::make_SETS(loc); }
 set             { return psql_parse::parser::make_SET(loc); }
 symmetric       { return psql_parse::parser::make_SYMMETRIC(loc); }
 system_user     { return psql_parse::parser::make_SYSTEM_USER(loc); }

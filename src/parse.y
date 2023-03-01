@@ -83,10 +83,10 @@ class driver;
 %token 			QUOTE		"'"
 
 %token 	ACTION ALL AND ASYMMETRIC ASC AS BETWEEN BIT BY CASCADE CHARACTER COLLATE COMMIT CONSTRAINT
-	CREATE CROSS CURRENT_USER DATE DECIMAL DEFAULT DELETE DESC DISTINCT DOUBLE EXCEPT FALSE FIRST
-	FLOAT FOREIGN FROM FULL GLOBAL INNER INTEGER INTERSECT IN JOIN KEY LAST LEFT LOCAL MATCH
+	CREATE CROSS CUBE CURRENT_USER DATE DECIMAL DEFAULT DELETE DESC DISTINCT DOUBLE EXCEPT FALSE FIRST
+	FLOAT FOREIGN FROM FULL GLOBAL GROUPING GROUP INNER INTEGER INTERSECT IN JOIN KEY LAST LEFT LOCAL MATCH
 	NATIONAL NATURAL NO NOT NCHAR NULLS NULL NUMERIC ON ORDER OR OUTER PARTIAL PRECISION
-	PRESERVE PRIMARY REAL REFERENCES RIGHT ROWS ROW SESSION_USER SET
+	PRESERVE PRIMARY REAL REFERENCES RIGHT ROLLUP ROWS ROW SESSION_USER SETS SET
 	SMALLINT SELECT SYMMETRIC SYSTEM_USER TABLE TEMPORARY TIMESTAMP TIME TRUE
 	UNION UNIQUE UNKNOWN UPDATE USER USING VARCHAR VARYING WHERE WITH ZONE
 
@@ -183,7 +183,17 @@ class driver;
 %type <JoinExpr::Kind>						join_type
 %type <Expression>						where_clause
 
-
+%type <std::optional<GroupClause>>				group_clause
+%type <std::vector<Grouping>>					group_by_list
+%type <Grouping>						group_by_element
+%type <box<GroupingSet>>					empty_grouping_set
+%type <Expression>						column_ref
+%type <std::vector<Expression>>					column_ref_list
+%type <box<GroupingSet>>					ordinary_grouping_set
+%type <std::vector<box<GroupingSet>>>				ordinary_grouping_set_list
+%type <box<Rollup>>						rollup_list
+%type <box<Cube>>						cube_list
+%type <box<GroupingSets>>					grouping_sets
 
 
 %%
@@ -619,12 +629,13 @@ null_ordering:
  ;
 
 simple_select:
-    SELECT opt_set_quantifier target_list from_clause where_clause
+    SELECT opt_set_quantifier target_list from_clause where_clause group_clause
  	{
  		auto expr = mkNode<QueryExpr>(@$);
 		expr->target_list = $target_list;
 		expr->from_clause = $from_clause;
 		expr->where_clause = $where_clause;
+		expr->group_clause = $group_clause;
 		expr->set_quantifier = $opt_set_quantifier;
 		$$ = expr;
 	}
@@ -735,6 +746,69 @@ where_clause:
     WHERE value_expr 						{ $$ = $value_expr; }
  |  %empty							{ $$; }
  ;
+
+group_clause:
+    GROUP BY opt_set_quantifier group_by_list			{ $$ = GroupClause { $opt_set_quantifier, $group_by_list }; }
+ |  %empty							{ $$ = std::nullopt; }
+ ;
+
+group_by_list:
+    group_by_element[elem]					{ $$ = std::vector<Grouping>(); $$.emplace_back($elem); }
+ |  group_by_list[list] COMMA group_by_element[elem]		{ $list.emplace_back($elem); $$ = $list; }
+ ;
+
+group_by_element:  ordinary_grouping_set | empty_grouping_set | rollup_list | cube_list | grouping_sets ;
+
+empty_grouping_set:
+    LP RP							{ $$ = mkNode<GroupingSet>(@$); }
+ ;
+
+column_ref:
+    IDENTIFIER[name] opt_collate_clause
+	{
+		auto var = mkNode<Var>(@name, $name);
+		if ($opt_collate_clause.has_value()) {
+                    $$ = mkNode<Collate>(@$, var, std::move($opt_collate_clause.value()));
+		} else {
+		   $$ = var;
+		}
+        }
+ ;
+
+column_ref_list:
+    column_ref[elem]						{ $$ = std::vector<Expression>(); $$.emplace_back($elem); }
+ |  column_ref_list[list] COMMA column_ref[elem]		{ $list.emplace_back($elem); $$ = $list; }
+ ;
+
+ordinary_grouping_set:
+    column_ref							{ $$ = mkNode<GroupingSet>(@$); $$->columns.emplace_back($column_ref); }
+ |  LP column_ref_list RP					{ $$ = mkNode<GroupingSet>(@$); $$->columns = $column_ref_list; }
+ ;
+
+ordinary_grouping_set_list:
+    ordinary_grouping_set[elem]
+	{
+		$$ = std::vector<box<GroupingSet>>();
+		$$.emplace_back($elem);
+	}
+ |  ordinary_grouping_set_list[list] COMMA ordinary_grouping_set[elem]
+ 	{
+ 		$list.emplace_back($elem);
+ 		$$ = $list;
+ 	}
+
+rollup_list:
+    ROLLUP LP ordinary_grouping_set_list[ogsl] RP		{ $$ = mkNode<Rollup>(@$); $$->sets = $ogsl; }
+ ;
+
+cube_list:
+    CUBE LP ordinary_grouping_set_list[ogsl] RP			{ $$ = mkNode<Cube>(@$); $$->sets = $ogsl; }
+ ;
+
+grouping_sets:
+    GROUPING SETS LP group_by_list RP				{ $$ = mkNode<GroupingSets>(@$); $$->sets = $group_by_list; }
+ ;
+
 
 %%
 
