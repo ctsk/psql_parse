@@ -6,8 +6,8 @@ namespace psql_parse {
 	struct SelectStatement {
 		DEFAULT_EQ(SelectStatement);
 
-		RelExpression rel_expr;
+		box<Query> rel_expr;
 
-		explicit SelectStatement(RelExpression queryExpr);
+		explicit SelectStatement(box<Query> queryExpr);
 	};
 }

@@ -22,8 +22,9 @@ TEST_CASE( "Numbers are parsed", "[expr]" ) {
     SECTION( "integer" ) {
 		auto result = parser("select 192");
 
-		auto q = new psql_parse::QueryExpr();
-		q->target_list.push_back(new psql_parse::IntegerLiteral(192));
+		auto s = new psql_parse::SelectExpr();
+		auto q = new psql_parse::Query(s);
+		s->target_list.push_back(new psql_parse::IntegerLiteral(192));
 		auto expected = new SelectStatement(q);
 
 		REQUIRE(result == expected);
@@ -32,8 +33,9 @@ TEST_CASE( "Numbers are parsed", "[expr]" ) {
     SECTION( "floats" ) {
 		auto result = parser("select 10.2");
 
-		auto q = new psql_parse::QueryExpr();
-		q->target_list.push_back(new psql_parse::FloatLiteral(10.2));
+		auto s = new psql_parse::SelectExpr();
+		auto q = new psql_parse::Query(s);
+		s->target_list.push_back(new psql_parse::FloatLiteral(10.2));
 		auto expected = new SelectStatement(q);
 
 		REQUIRE(result == expected);
@@ -55,8 +57,9 @@ TEST_CASE( "lexing identifiers", "[lex-ident]") {
 	SECTION( "select FOO" ) {
 		auto result = parser("select FOO");
 
-		auto q = new psql_parse::QueryExpr();
-		q->target_list.push_back(new psql_parse::Var("foo"));
+		auto s = new psql_parse::SelectExpr();
+		auto q = new psql_parse::Query(s);
+		s->target_list.push_back(new psql_parse::Var("foo"));
 		auto expected = box<SelectStatement>::make(q);
 
 		REQUIRE(result == expected);
@@ -65,9 +68,10 @@ TEST_CASE( "lexing identifiers", "[lex-ident]") {
 	SECTION( "select \"FOO\"" ) {
 		auto result = parser( R"(select "FOO")");
 
-		auto q = new psql_parse::QueryExpr();
-		q->target_list.push_back(new psql_parse::Var("FOO"));
-		auto expected = new SelectStatement(q);
+		auto s = new psql_parse::SelectExpr();
+		auto q = new psql_parse::Query(s);
+		s->target_list.push_back(new psql_parse::Var("FOO"));
+		auto expected = new SelectStatement(std::move(q));
 
 		REQUIRE(result == expected);
 	}

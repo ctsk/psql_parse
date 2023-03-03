@@ -86,12 +86,12 @@ class driver;
 	BY CASCADE CHARACTER COLLATE COMMIT CONSTRAINT
 	CREATE CROSS CUBE CURRENT_USER CURRENT DATE
 	DECIMAL DEFAULT DELETE DESC DISTINCT DOUBLE
-	EXCEPT EXCLUDE FALSE FIRST FLOAT FOLLOWING
+	EXCEPT EXCLUDE FALSE FETCH FIRST FLOAT FOLLOWING
 	FOREIGN FROM FULL GLOBAL GROUPING GROUPS GROUP
 	HAVING INNER INTEGER INTERSECT IN JOIN KEY LAST
-	LEFT LOCAL MATCH NATIONAL NATURAL NOT NO NCHAR
-	NULLS NULL NUMERIC ON ORDER OR OTHERS OUTER PARTIAL
-	PARTITION PRECEDING PRECISION PRESERVE PRIMARY
+	LEFT LOCAL MATCH NATIONAL NATURAL NCHAR NEXT NOT NO
+	NULLS NULL NUMERIC OFFSET ONLY ON ORDER OR OTHERS OUTER PARTIAL
+	PARTITION PERCENT PRECEDING PRECISION PRESERVE PRIMARY
 	RANGE REAL REFERENCES RIGHT ROLLUP ROWS ROW
 	SESSION_USER SETS SET SMALLINT SELECT SYMMETRIC
 	SYSTEM_USER TABLE TEMPORARY TIES TIMESTAMP TIME
@@ -170,8 +170,8 @@ class driver;
 %type <Expression>						value_expr_no_parens
 
 %type <Statement>						SelectStatement
-%type <RelExpression>						select_no_parens
-%type <RelExpression>						select_with_parens
+%type <box<Query>>						select_no_parens
+%type <box<Query>>						select_with_parens
 %type <RelExpression>						simple_select
 %type <RelExpression>						select_clause
 %type <std::optional<SetQuantifier>>				opt_set_quantifier
@@ -182,6 +182,13 @@ class driver;
 %type <box<SortSpec>>						sort_spec
 %type <SortSpec::Order>						opt_asc_or_desc
 %type <SortSpec::NullOrder>					null_ordering
+
+%type <std::optional<box<IntegerLiteral>>>			opt_offset_clause
+%type <std::optional<Fetch>>					opt_fetch_first_clause
+%type <Fetch::Kind>						fetch_kind
+%type <bool>							fetch_percent
+%type <bool>							fetch_with_ties
+%type <std::optional<box<IntegerLiteral>>>			opt_fetch_quantity
 
 %type <std::vector<Expression>>					target_list
 %type <Expression>						target_element
@@ -206,7 +213,7 @@ class driver;
 
 %type <Expression>						having_clause
 
-%type <std::vector<box<Window>>>					window_clause
+%type <std::vector<box<Window>>>				window_clause
 %type <std::vector<box<Window>>>				window_definition_list
 %type <box<Window>>						window_definition
 %type <std::optional<Name>>					opt_existing_window_name
@@ -614,7 +621,15 @@ select_with_parens:
  */
 select_no_parens:
     simple_select
- |  select_clause order_by_clause				{ $$ = mkNode<OrderOp>(@$, $select_clause, $order_by_clause); }
+    	{
+    		$$ = mkNode<Query>(@$, $simple_select);
+    	}
+ |  select_clause order_by_clause opt_offset_clause opt_fetch_first_clause
+ 	{
+ 		$$ = mkNode<Query>(@$, $select_clause);
+ 		$$->order = $order_by_clause;
+ 		$$->offset = $opt_offset_clause;
+ 	}
  ;
 
 select_clause: simple_select | select_with_parens ;
@@ -654,10 +669,50 @@ null_ordering:
  |  %empty							{ $$ = SortSpec::NullOrder::DEFAULT; }
  ;
 
+opt_offset_clause:
+    OFFSET INTEGER_VALUE[count] opt_row_or_rows			{ $$ = mkNode<IntegerLiteral>(@count, $count); }
+ |  %empty							{ $$ = std::nullopt; }
+ ;
+
+opt_fetch_first_clause:
+    FETCH fetch_kind opt_fetch_quantity fetch_percent opt_row_or_rows fetch_with_ties
+	{
+		Fetch fetch{};
+		fetch.kind = $fetch_kind;
+		fetch.value = $opt_fetch_quantity;
+		fetch.with_ties = $fetch_with_ties;
+		fetch.percent = $fetch_percent;
+		$$ = std::move(fetch);
+	}
+ |  %empty							{ $$ = std::nullopt; }
+ ;
+
+fetch_kind:
+    FIRST 							{ $$ = Fetch::Kind::FIRST; }
+ |  NEXT 							{ $$ = Fetch::Kind::NEXT; }
+ ;
+
+fetch_percent:
+    PERCENT							{ $$ = true; }
+ |  %empty							{ $$ = false; }
+ ;
+
+fetch_with_ties:
+    WITH TIES							{ $$ = true; }
+ |  ONLY							{ $$ = false; }
+ ;
+
+opt_fetch_quantity:
+    INTEGER_VALUE[quant]					{ $$ = mkNode<IntegerLiteral>(@quant, $quant); }
+ |  %empty							{ $$ = std::nullopt; }
+ ;
+
+opt_row_or_rows: ROW | ROWS | %empty;
+
 simple_select:
     SELECT opt_set_quantifier target_list from_clause where_clause group_clause having_clause window_clause
  	{
- 		auto expr = mkNode<QueryExpr>(@$);
+ 		auto expr = mkNode<SelectExpr>(@$);
 		expr->target_list = $target_list;
 		expr->from_clause = $from_clause;
 		expr->where_clause = $where_clause;

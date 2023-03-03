@@ -28,10 +28,10 @@ namespace psql_parse {
 
 	struct JoinExpr;
 	struct TableName;
-	struct QueryExpr;
+	struct SelectExpr;
 	struct ValuesExpr;
 	struct SetOp;
-	struct OrderOp;
+	struct Query;
 
 	using Expression = std::variant<
 			box<IntegerLiteral>,
@@ -62,10 +62,10 @@ namespace psql_parse {
 	using RelExpression = std::variant<
 			box<JoinExpr>,
 			box<TableName>,
-			box<QueryExpr>,
+			box<SelectExpr>,
 			box<ValuesExpr>,
 			box<SetOp>,
-			box<OrderOp>>;
+			box<Query>>;
 	
 	/// <expr> AS <name>
 	struct AliasExpr {
@@ -284,8 +284,8 @@ namespace psql_parse {
 		std::optional<Frame> frame;
 	};
 
-	struct QueryExpr {
-		DEFAULT_EQ(QueryExpr);
+	struct SelectExpr {
+		DEFAULT_EQ(SelectExpr);
 
 		/*
  		 * NOTE: nullptr = ASTERISK
@@ -298,16 +298,33 @@ namespace psql_parse {
 		std::vector<box<Window>> window_clause;
 		std::optional<SetQuantifier> set_quantifier;
 
-		QueryExpr();
+		SelectExpr();
 	};
 
-	struct OrderOp {
-		DEFAULT_EQ(OrderOp);
+	struct Fetch {
+		DEFAULT_EQ(Fetch);
+
+		enum class Kind {
+			FIRST,
+			NEXT
+		};
+
+
+		Kind kind;
+		bool with_ties;
+		bool percent;
+		std::optional<box<IntegerLiteral>> value;
+	};
+
+	struct Query {
+		DEFAULT_EQ(Query);
 
 		RelExpression expr;
-		std::vector<box<SortSpec>> fields;
+		std::vector<box<SortSpec>> order;
+		std::optional<box<IntegerLiteral>> offset;
+		std::optional<Fetch> fetch;
 
-		explicit OrderOp(RelExpression expr, std::vector<box<SortSpec>> fields);
+		explicit Query(RelExpression expr);
 	};
 
 	struct SetOp {

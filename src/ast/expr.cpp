@@ -34,7 +34,7 @@ namespace psql_parse {
 	TableName::TableName(QualifiedName name)
 	: name(std::move(name)) {}
 
-	QueryExpr::QueryExpr() = default;
+	SelectExpr::SelectExpr() = default;
 
 	SetOp::SetOp(RelExpression left, SetOp::Op op, RelExpression right)
 	: op(op), left(std::move(left)), right(std::move(right)) {}
@@ -65,8 +65,8 @@ namespace psql_parse {
 
 	SortSpec::SortSpec() = default;
 
-	OrderOp::OrderOp(RelExpression expr, std::vector<box<SortSpec>> fields)
-	: expr(std::move(expr)), fields(std::move(fields)) {}
+	Query::Query(RelExpression expr)
+	: expr(std::move(expr)), order (), offset (std::nullopt), fetch (std::nullopt) {}
 
 	RowExpr::RowExpr() = default;
 

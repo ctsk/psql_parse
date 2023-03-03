@@ -151,6 +151,7 @@ double          { return psql_parse::parser::make_DOUBLE(loc); }
 except          { return psql_parse::parser::make_EXCEPT(loc); }
 exclude         { return psql_parse::parser::make_EXCLUDE(loc); }
 false           { return psql_parse::parser::make_FALSE(loc); }
+fetch           { return psql_parse::parser::make_FETCH(loc); }
 first           { return psql_parse::parser::make_FIRST(loc); }
 float           { return psql_parse::parser::make_FLOAT(loc); }
 following       { return psql_parse::parser::make_FOLLOWING(loc); }
@@ -176,11 +177,14 @@ match           { return psql_parse::parser::make_MATCH(loc); }
 national        { return psql_parse::parser::make_NATIONAL(loc); }
 natural         { return psql_parse::parser::make_NATURAL(loc); }
 nchar           { return psql_parse::parser::make_NCHAR(loc); }
+next            { return psql_parse::parser::make_NEXT(loc); }
 not             { return psql_parse::parser::make_NOT(loc); }
 no              { return psql_parse::parser::make_NO(loc); }
 nulls           { return psql_parse::parser::make_NULLS(loc); }
 null            { return psql_parse::parser::make_NULL(loc); }
 numeric         { return psql_parse::parser::make_NUMERIC(loc); }
+offset          { return psql_parse::parser::make_OFFSET(loc); }
+only            { return psql_parse::parser::make_ONLY(loc); }
 on              { return psql_parse::parser::make_ON(loc); }
 order           { return psql_parse::parser::make_ORDER(loc); }
 or              { return psql_parse::parser::make_ON(loc); }
@@ -188,6 +192,7 @@ others          { return psql_parse::parser::make_OTHERS(loc); }
 outer           { return psql_parse::parser::make_OUTER(loc); }
 partial         { return psql_parse::parser::make_PARTIAL(loc); }
 partition       { return psql_parse::parser::make_PARTITION(loc); }
+percent         { return psql_parse::parser::make_PERCENT(loc); }
 preceding       { return psql_parse::parser::make_PRECEDING(loc); }
 precision       { return psql_parse::parser::make_PRECISION(loc); }
 preserve        { return psql_parse::parser::make_PRESERVE(loc); }
