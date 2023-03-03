@@ -139,6 +139,7 @@ create          { return psql_parse::parser::make_CREATE(loc); }
 cross           { return psql_parse::parser::make_CROSS(loc); }
 cube            { return psql_parse::parser::make_CUBE(loc); }
 current_user    { return psql_parse::parser::make_CURRENT_USER(loc); }
+current         { return psql_parse::parser::make_CURRENT(loc); }
 date            { return psql_parse::parser::make_DATE(loc); }
 decimal         { return psql_parse::parser::make_DECIMAL(loc); }
 dec             { return psql_parse::parser::make_DECIMAL(loc); }
@@ -148,14 +149,17 @@ desc            { return psql_parse::parser::make_DESC(loc); }
 distinct        { return psql_parse::parser::make_DISTINCT(loc); }
 double          { return psql_parse::parser::make_DOUBLE(loc); }
 except          { return psql_parse::parser::make_EXCEPT(loc); }
+exclude         { return psql_parse::parser::make_EXCLUDE(loc); }
 false           { return psql_parse::parser::make_FALSE(loc); }
 first           { return psql_parse::parser::make_FIRST(loc); }
 float           { return psql_parse::parser::make_FLOAT(loc); }
+following       { return psql_parse::parser::make_FOLLOWING(loc); }
 foreign         { return psql_parse::parser::make_FOREIGN(loc); }
 from            { return psql_parse::parser::make_FROM(loc); }
 full            { return psql_parse::parser::make_FULL(loc); }
 global          { return psql_parse::parser::make_GLOBAL(loc); }
 grouping        { return psql_parse::parser::make_GROUPING(loc); }
+groups          { return psql_parse::parser::make_GROUPS(loc); }
 group           { return psql_parse::parser::make_GROUP(loc); }
 having          { return psql_parse::parser::make_HAVING(loc); }
 inner           { return psql_parse::parser::make_INNER(loc); }
@@ -180,11 +184,15 @@ numeric         { return psql_parse::parser::make_NUMERIC(loc); }
 on              { return psql_parse::parser::make_ON(loc); }
 order           { return psql_parse::parser::make_ORDER(loc); }
 or              { return psql_parse::parser::make_ON(loc); }
+others          { return psql_parse::parser::make_OTHERS(loc); }
 outer           { return psql_parse::parser::make_OUTER(loc); }
 partial         { return psql_parse::parser::make_PARTIAL(loc); }
+partition       { return psql_parse::parser::make_PARTITION(loc); }
+preceding       { return psql_parse::parser::make_PRECEDING(loc); }
 precision       { return psql_parse::parser::make_PRECISION(loc); }
 preserve        { return psql_parse::parser::make_PRESERVE(loc); }
 primary         { return psql_parse::parser::make_PRIMARY(loc); }
+range           { return psql_parse::parser::make_RANGE(loc); }
 real            { return psql_parse::parser::make_REAL(loc); }
 references      { return psql_parse::parser::make_REFERENCES(loc); }
 right           { return psql_parse::parser::make_RIGHT(loc); }
@@ -199,9 +207,11 @@ symmetric       { return psql_parse::parser::make_SYMMETRIC(loc); }
 system_user     { return psql_parse::parser::make_SYSTEM_USER(loc); }
 table           { return psql_parse::parser::make_TABLE(loc); }
 temporary       { return psql_parse::parser::make_TEMPORARY(loc); }
+ties            { return psql_parse::parser::make_TIES(loc); }
 timestamp       { return psql_parse::parser::make_TIMESTAMP(loc); }
 time            { return psql_parse::parser::make_TIME(loc); }
 true            { return psql_parse::parser::make_TRUE(loc); }
+unbounded       { return psql_parse::parser::make_UNBOUNDED(loc); }
 union           { return psql_parse::parser::make_UNION(loc); }
 unique          { return psql_parse::parser::make_UNIQUE(loc); }
 unknown         { return psql_parse::parser::make_UNKNOWN(loc); }
@@ -211,6 +221,7 @@ using           { return psql_parse::parser::make_USING(loc); }
 varchar         { return psql_parse::parser::make_VARCHAR(loc); }
 varying         { return psql_parse::parser::make_VARYING(loc); }
 where           { return psql_parse::parser::make_WHERE(loc); }
+window          { return psql_parse::parser::make_WINDOW(loc); }
 with            { return psql_parse::parser::make_WITH(loc); }
 zone            { return psql_parse::parser::make_ZONE(loc); }
 

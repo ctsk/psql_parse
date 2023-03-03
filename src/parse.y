@@ -82,13 +82,21 @@ class driver;
 %token 			GREATER		">"
 %token 			QUOTE		"'"
 
-%token 	ACTION ALL AND ASYMMETRIC ASC AS BETWEEN BIT BY CASCADE CHARACTER COLLATE COMMIT CONSTRAINT
-	CREATE CROSS CUBE CURRENT_USER DATE DECIMAL DEFAULT DELETE DESC DISTINCT DOUBLE EXCEPT FALSE FIRST
-	FLOAT FOREIGN FROM FULL GLOBAL GROUPING GROUP HAVING INNER INTEGER INTERSECT IN JOIN KEY LAST LEFT LOCAL MATCH
-	NATIONAL NATURAL NO NOT NCHAR NULLS NULL NUMERIC ON ORDER OR OUTER PARTIAL PRECISION
-	PRESERVE PRIMARY REAL REFERENCES RIGHT ROLLUP ROWS ROW SESSION_USER SETS SET
-	SMALLINT SELECT SYMMETRIC SYSTEM_USER TABLE TEMPORARY TIMESTAMP TIME TRUE
-	UNION UNIQUE UNKNOWN UPDATE USER USING VARCHAR VARYING WHERE WITH ZONE
+%token 	ACTION ALL AND ASYMMETRIC ASC AS BETWEEN BIT
+	BY CASCADE CHARACTER COLLATE COMMIT CONSTRAINT
+	CREATE CROSS CUBE CURRENT_USER CURRENT DATE
+	DECIMAL DEFAULT DELETE DESC DISTINCT DOUBLE
+	EXCEPT EXCLUDE FALSE FIRST FLOAT FOLLOWING
+	FOREIGN FROM FULL GLOBAL GROUPING GROUPS GROUP
+	HAVING INNER INTEGER INTERSECT IN JOIN KEY LAST
+	LEFT LOCAL MATCH NATIONAL NATURAL NOT NO NCHAR
+	NULLS NULL NUMERIC ON ORDER OR OTHERS OUTER PARTIAL
+	PARTITION PRECEDING PRECISION PRESERVE PRIMARY
+	RANGE REAL REFERENCES RIGHT ROLLUP ROWS ROW
+	SESSION_USER SETS SET SMALLINT SELECT SYMMETRIC
+	SYSTEM_USER TABLE TEMPORARY TIES TIMESTAMP TIME
+	TRUE UNBOUNDED UNION UNIQUE UNKNOWN UPDATE USER
+	USING VARCHAR VARYING WHERE WINDOW WITH ZONE
 
 %left UNION EXCEPT
 %left INTERSECT
@@ -168,6 +176,7 @@ class driver;
 %type <RelExpression>						select_clause
 %type <std::optional<SetQuantifier>>				opt_set_quantifier
 
+%type <std::vector<box<SortSpec>>>				opt_order_by_clause
 %type <std::vector<box<SortSpec>>>				order_by_clause
 %type <std::vector<box<SortSpec>>>				sort_spec_list
 %type <box<SortSpec>>						sort_spec
@@ -600,12 +609,17 @@ select_no_parens:
 
 select_clause: simple_select | select_with_parens ;
 
+opt_order_by_clause:
+    order_by_clause
+ |  %empty							{ $$ = std::vector<box<SortSpec>>(); }
+ ;
+
 order_by_clause:
     ORDER BY sort_spec_list					{ $$ = $sort_spec_list; }
  ;
 
 sort_spec_list:
-    sort_spec							{ $$ = std::vector<box<SortSpec>>(); }
+    sort_spec							{ $$ = std::vector<box<SortSpec>>(); $$.emplace_back($sort_spec); }
  |  sort_spec_list[list] COMMA sort_spec			{ $list.push_back($sort_spec); $$ = $list; }
  ;
 
@@ -773,7 +787,7 @@ column_ref:
 		if ($opt_collate_clause.has_value()) {
                     $$ = mkNode<Collate>(@$, var, std::move($opt_collate_clause.value()));
 		} else {
-		   $$ = var;
+		    $$ = var;
 		}
         }
  ;
@@ -817,6 +831,79 @@ having_clause:
     HAVING value_expr						{ $$ = $value_expr; }
  |  %empty							{ $$; }
  ;
+
+window_clause:
+    WINDOW window_definition_list
+ |  %empty
+ ;
+
+window_definition_list:
+    window_definition[elem]
+ |  window_definition_list[list] COMMA window_definition[elem]
+ ;
+
+window_definition:
+   IDENTIFIER[name] AS window_specification
+ ;
+
+window_specification:
+    LP opt_existing_window_name opt_partition_clause
+       opt_order_by_clause opt_frame_clause RP
+ ;
+
+opt_existing_window_name:
+    IDENTIFIER[name]
+ |  %empty
+ ;
+
+opt_partition_clause:
+    PARTITION BY column_ref_list
+ ;
+
+opt_frame_clause:
+    frame_units frame_extent
+
+frame_units:
+    ROWS
+ |  RANGE
+ |  GROUPS
+ ;
+
+frame_extent:
+    frame_start
+ |  frame_between
+
+frame_start:
+    UNBOUNDED PRECEDING
+ |  frame_preceding
+ |  CURRENT ROW
+ ;
+
+frame_preceding:
+    unsigned_literal PRECEDING
+ ;
+
+frame_between:
+    BETWEEN frame_bound AND frame_bound
+ ;
+
+frame_bound:
+    frame_start
+ |  UNBOUNDED FOLLOWING
+ |  frame_following
+
+frame_following:
+    unsigned_literal FOLLOWING
+ ;
+
+opt_frame_exclusion:
+    EXCLUDE CURRENT ROW
+ |  EXCLUDE GROUP
+ |  EXCLUDE TIES
+ |  EXCLUDE NO OTHERS
+ |  %empty
+ ;
+
 
 %%
 
