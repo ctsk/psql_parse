@@ -206,6 +206,16 @@ class driver;
 
 %type <Expression>						having_clause
 
+%type <std::vector<box<Window>>>					window_clause
+%type <std::vector<box<Window>>>				window_definition_list
+%type <box<Window>>						window_definition
+%type <std::optional<Name>>					opt_existing_window_name
+%type <std::vector<Expression>>					opt_partition_clause
+%type <std::optional<Window::Frame>>				opt_frame_clause
+%type <Window::Frame::Unit>					frame_units
+%type <Window::Frame::Bound>					frame_start
+%type <Window::Frame::Bound>					frame_bound
+%type <std::optional<Window::Frame::Exclusion>>			opt_frame_exclusion
 
 %%
 
@@ -645,7 +655,7 @@ null_ordering:
  ;
 
 simple_select:
-    SELECT opt_set_quantifier target_list from_clause where_clause group_clause having_clause
+    SELECT opt_set_quantifier target_list from_clause where_clause group_clause having_clause window_clause
  	{
  		auto expr = mkNode<QueryExpr>(@$);
 		expr->target_list = $target_list;
@@ -653,6 +663,7 @@ simple_select:
 		expr->where_clause = $where_clause;
 		expr->group_clause = $group_clause;
 		expr->having_clause = $having_clause;
+		expr->window_clause = $window_clause;
 		expr->set_quantifier = $opt_set_quantifier;
 		$$ = expr;
 	}
@@ -826,82 +837,94 @@ grouping_sets:
     GROUPING SETS LP group_by_list RP				{ $$ = mkNode<GroupingSets>(@$); $$->sets = $group_by_list; }
  ;
 
-
 having_clause:
     HAVING value_expr						{ $$ = $value_expr; }
  |  %empty							{ $$; }
  ;
 
 window_clause:
-    WINDOW window_definition_list
- |  %empty
+    WINDOW window_definition_list				{ $$ = $window_definition_list; }
+ |  %empty							{ $$ = std::vector<box<Window>>(); }
  ;
 
 window_definition_list:
-    window_definition[elem]
- |  window_definition_list[list] COMMA window_definition[elem]
+    window_definition[elem]					{ $$ = std::vector<box<Window>>(); $$.push_back($elem); }
+ |  window_definition_list[list] COMMA window_definition[elem]	{ $list.push_back($elem); $$ = $list; }
  ;
 
 window_definition:
-   IDENTIFIER[name] AS window_specification
- ;
-
-window_specification:
+    IDENTIFIER[name] AS
     LP opt_existing_window_name opt_partition_clause
-       opt_order_by_clause opt_frame_clause RP
+       opt_order_by_clause opt_frame_clause
+    RP
+	{
+		$$ = mkNode<Window>(@$, $name,
+			$opt_existing_window_name,
+			$opt_partition_clause,
+			$opt_order_by_clause,
+			$opt_frame_clause);
+	}
  ;
 
 opt_existing_window_name:
-    IDENTIFIER[name]
- |  %empty
+    IDENTIFIER[name]						{ $$ = $name; }
+ |  %empty							{ $$ = std::nullopt; }
  ;
 
 opt_partition_clause:
-    PARTITION BY column_ref_list
+    PARTITION BY column_ref_list				{ $$ = $column_ref_list; }
+ |  %empty							{ $$ = std::vector<Expression>(); }
  ;
 
+/*
+ *  We inline frame_start and frame_between to
+ *  reduce the number of levels we need to pass data through
+ */
 opt_frame_clause:
-    frame_units frame_extent
+    frame_units frame_start opt_frame_exclusion
+	{
+		$$ = Window::Frame {
+			.unit = $frame_units,
+			.start = $frame_start,
+			.end = std::nullopt,
+			.exclude = $opt_frame_exclusion
+		};
+	}
+ |  frame_units BETWEEN frame_bound[start] AND frame_bound[end] opt_frame_exclusion
+	{
+		$$ = Window::Frame {
+			.unit = $frame_units,
+			.start = $start,
+			.end = $end,
+			.exclude = $opt_frame_exclusion
+		};
+	}
+ |  %empty							{ $$ = std::nullopt; }
+ ;
 
 frame_units:
-    ROWS
- |  RANGE
- |  GROUPS
+    ROWS							{ $$ = Window::Frame::Unit::ROWS; }
+ |  RANGE							{ $$ = Window::Frame::Unit::RANGE; }
+ |  GROUPS							{ $$ = Window::Frame::Unit::GROUPS; }
  ;
-
-frame_extent:
-    frame_start
- |  frame_between
 
 frame_start:
-    UNBOUNDED PRECEDING
- |  frame_preceding
- |  CURRENT ROW
- ;
-
-frame_preceding:
-    unsigned_literal PRECEDING
- ;
-
-frame_between:
-    BETWEEN frame_bound AND frame_bound
+    UNBOUNDED PRECEDING						{ $$ = std::make_pair(Window::Frame::BoundKind::PRECEDING, Expression()); }
+ |  unsigned_literal PRECEDING					{ std::make_pair(Window::Frame::BoundKind::PRECEDING, $unsigned_literal); }
+ |  CURRENT ROW							{ $$ = std::make_pair(Window::Frame::BoundKind::PRECEDING, Expression()); }
  ;
 
 frame_bound:
     frame_start
- |  UNBOUNDED FOLLOWING
- |  frame_following
-
-frame_following:
-    unsigned_literal FOLLOWING
- ;
+ |  UNBOUNDED FOLLOWING						{ $$ = std::make_pair(Window::Frame::BoundKind::FOLLOWING, Expression()); }
+ |  unsigned_literal FOLLOWING					{ $$ = std::make_pair(Window::Frame::BoundKind::FOLLOWING, $unsigned_literal); }
 
 opt_frame_exclusion:
-    EXCLUDE CURRENT ROW
- |  EXCLUDE GROUP
- |  EXCLUDE TIES
- |  EXCLUDE NO OTHERS
- |  %empty
+    EXCLUDE CURRENT ROW						{ $$ = Window::Frame::Exclusion::CURRENT_ROW; }
+ |  EXCLUDE GROUP						{ $$ = Window::Frame::Exclusion::GROUP; }
+ |  EXCLUDE TIES						{ $$ = Window::Frame::Exclusion::TIES; }
+ |  EXCLUDE NO OTHERS						{ $$ = Window::Frame::Exclusion::NO_OTHERS; }
+ |  %empty							{ $$ = std::nullopt; }
  ;
 
 

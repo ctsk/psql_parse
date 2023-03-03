@@ -236,6 +236,54 @@ namespace psql_parse {
 		std::vector<Grouping> group_clause;
 	};
 
+	struct Window {
+		DEFAULT_EQ(Window);
+
+		struct Frame {
+			DEFAULT_EQ(Frame);
+
+			enum class Unit {
+				ROWS,
+				RANGE,
+				GROUPS
+			};
+
+			enum class BoundKind {
+				CURRENT_ROW,
+				PRECEDING,
+				FOLLOWING
+			};
+
+			enum class Exclusion {
+				CURRENT_ROW,
+				GROUP,
+				TIES,
+				NO_OTHERS
+			};
+
+			/*
+			 * This is loose from a typing perspective,
+			 * somewhat to avoid nested std::variants
+			 */
+			using Bound = std::pair<BoundKind, Expression>;
+
+			Unit unit;
+			Bound start;
+			std::optional<Bound> end;
+			std::optional<Exclusion> exclude;
+
+		};
+
+		Name window_name;
+		std::optional<Name> existing_window;
+		/*
+		 * Empty vector = no partition clause
+		 */
+		std::vector<Expression> partition;
+		std::vector<box<SortSpec>> sort;
+		std::optional<Frame> frame;
+	};
+
 	struct QueryExpr {
 		DEFAULT_EQ(QueryExpr);
 
@@ -247,6 +295,7 @@ namespace psql_parse {
 		Expression where_clause;
 		std::optional<GroupClause> group_clause;
 		Expression having_clause;
+		std::vector<box<Window>> window_clause;
 		std::optional<SetQuantifier> set_quantifier;
 
 		QueryExpr();
