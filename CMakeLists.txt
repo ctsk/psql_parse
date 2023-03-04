@@ -88,7 +88,6 @@ add_library(psql_parse ${SOURCES})
 #]=======]
 
 set(TEST_SOURCES
-        test/test_utils.cpp
         ${CMAKE_SOURCE_DIR}/test/tester.cpp)
 
 add_executable(runtests ${TEST_SOURCES})

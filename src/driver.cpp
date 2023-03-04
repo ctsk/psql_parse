@@ -4,10 +4,15 @@ psql_parse::driver::driver()
 : scanner_(nullptr)
 , trace_scanning_(false)
 , trace_parsing_(false)
+, scanner_err_(std::cerr)
 , result_() { }
 
 bool psql_parse::driver::parse(std::istream &in) {
-    scanner_ = std::make_unique<scanner>(&in);
+    if (scanner_ == nullptr) {
+        scanner_ = std::make_unique<scanner>(&in);
+    } else {
+        scanner_->switch_streams(in, scanner_err_);
+    }
     scanner_->set_debug(trace_scanning_);
     parser p(*this);
     p.set_debug_level(trace_parsing_);

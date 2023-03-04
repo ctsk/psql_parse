@@ -9,7 +9,8 @@
 
 }
 
-%defines
+%header
+
 %define api.parser.class {parser}
 %define api.namespace    { psql_parse }
 %define api.value.type   variant
@@ -20,8 +21,6 @@
 %define parse.assert
 %define parse.trace
 %define parse.error verbose
-
-%locations
 
 %parse-param { psql_parse::driver& driver }
 
@@ -184,7 +183,9 @@ class driver;
 %type <SortSpec::NullOrder>					null_ordering
 
 %type <std::optional<box<IntegerLiteral>>>			opt_offset_clause
+%type <box<IntegerLiteral>>                                     offset_clause
 %type <std::optional<Fetch>>					opt_fetch_first_clause
+%type <Fetch>                                                   fetch_first_clause
 %type <Fetch::Kind>						fetch_kind
 %type <bool>							fetch_percent
 %type <bool>							fetch_with_ties
@@ -437,7 +438,12 @@ column_constraint:
 references_spec:
     REFERENCES ref_table_cols opt_match opt_referential_triggered_action
     	{
-    		$$ = new References { $ref_table_cols.first, $ref_table_cols.second, $opt_match, $opt_referential_triggered_action };
+    		$$ = mkNode<References>(@$,
+    			$ref_table_cols.first,
+    			$ref_table_cols.second,
+    			$opt_match,
+    			$opt_referential_triggered_action
+    		);
 	}
  ;
 
@@ -629,6 +635,18 @@ select_no_parens:
  		$$ = mkNode<Query>(@$, $select_clause);
  		$$->order = $order_by_clause;
  		$$->offset = $opt_offset_clause;
+ 		$$->fetch = $opt_fetch_first_clause;
+ 	}
+ |  select_clause offset_clause opt_fetch_first_clause
+ 	{
+ 		$$ = mkNode<Query>(@$, $select_clause);
+ 		$$->offset = $offset_clause;
+ 		$$->fetch = $opt_fetch_first_clause;
+ 	}
+ |  select_clause fetch_first_clause
+ 	{
+ 		$$ = mkNode<Query>(@$, $select_clause);
+ 		$$->fetch = $fetch_first_clause;
  	}
  ;
 
@@ -670,11 +688,20 @@ null_ordering:
  ;
 
 opt_offset_clause:
+    offset_clause
+ |  %empty                                                      { $$ = std::nullopt; }
+ ;
+
+offset_clause:
     OFFSET INTEGER_VALUE[count] opt_row_or_rows			{ $$ = mkNode<IntegerLiteral>(@count, $count); }
- |  %empty							{ $$ = std::nullopt; }
  ;
 
 opt_fetch_first_clause:
+    fetch_first_clause
+ |  %empty
+ ;
+
+fetch_first_clause:
     FETCH fetch_kind opt_fetch_quantity fetch_percent opt_row_or_rows fetch_with_ties
 	{
 		Fetch fetch{};
@@ -684,7 +711,6 @@ opt_fetch_first_clause:
 		fetch.percent = $fetch_percent;
 		$$ = std::move(fetch);
 	}
- |  %empty							{ $$ = std::nullopt; }
  ;
 
 fetch_kind:

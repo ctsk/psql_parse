@@ -17,6 +17,8 @@ namespace psql_parse {
         bool trace_scanning_;
         bool trace_parsing_;
 
+        std::ostream& scanner_err_;
+
 		Statement result_;
 
 		NodeFactory nf;
