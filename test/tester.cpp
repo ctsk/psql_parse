@@ -194,6 +194,7 @@ TEST_CASE( "supported concepts", "[cov]") {
              */
             "select 1, (select 2), 3",
             "(select 1)",
+            "((select 1))",
             /*
              * Select asterisk
              */
@@ -232,6 +233,14 @@ TEST_CASE( "supported concepts", "[cov]") {
              * nested select in from_clause
              */
             "select foo from bar, (select 1, 2, 3), baz",
+            /*
+             * Table Alias
+             */
+            "select foo from (bar NATURAL JOIN bar) as baz",
+            "select foo from bar b",
+            "select foo from bar b(c,d)",
+            "select foo from bar AS b(c)",
+            "select foo from bar, (select 1, 2, 3) AS boo, baz",
             /*
              * Where clause
              */

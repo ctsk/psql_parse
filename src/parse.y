@@ -53,6 +53,17 @@ class driver;
 #define mkNode driver.nf.node
 #define mkNotNode driver.nf.notNode
 
+namespace psql_parse {
+    auto applyOptAlias(std::optional<box<TableAlias>> alias, RelExpression expr) -> RelExpression {
+	if (alias.has_value()) {
+	    alias.value()->expression = std::move(expr);
+	    return std::move(alias.value());
+	} else {
+	    return expr;
+	}
+    }
+}
+
 }
 
 %token END 0 "end of file"
@@ -198,6 +209,9 @@ class driver;
 %type <RelExpression>						table_ref
 %type <JoinExpr*>						joined_table
 %type <JoinExpr::Kind>						join_type
+%type <std::optional<box<TableAlias>>>				opt_alias_clause
+%type <box<TableAlias>>						alias_clause
+
 %type <Expression>						where_clause
 
 %type <std::optional<GroupClause>>				group_clause
@@ -807,16 +821,21 @@ from_list:
  ;
 
 /*
- *  MISSING: alias_clause
+ *  NOTE: the alias_clause follows the postgres grammar,
+ *  this allows assigning an alias to a joined_table:
+ *
+ *  select * from (foo CROSS JOIN bar) AS boo
+ *
  */
 table_ref:
-    qualified_name[table_name]					{ $$ = mkNode<TableName>(@$, $table_name); }
- |  select_with_parens						{ $$ = $select_with_parens; }
+    qualified_name[table_name] opt_alias_clause			{ $$ = applyOptAlias($opt_alias_clause, mkNode<TableName>(@$, $table_name)); }
+ |  select_with_parens opt_alias_clause				{ $$ = applyOptAlias($opt_alias_clause, $select_with_parens); }
  |  joined_table						{ $$ = $joined_table; }
+ |  LP joined_table RP alias_clause				{ $alias_clause->expression = $joined_table; $$ = $alias_clause; }
  ;
 
 joined_table:
-    LP joined_table RP 						{ $$ = $2; }
+    LP joined_table RP						{ $$ = $2; }
  |  table_ref[a] CROSS JOIN table_ref[b]			{ $$ = mkNode<JoinExpr>(@$, $a, JoinExpr::Kind::INNER, $b); }
  |  table_ref[a] join_type JOIN table_ref[b] ON value_expr[join_qual]
 	{
@@ -850,6 +869,18 @@ join_type:
 
 // outer is just noise
 opt_outer: OUTER | %empty ;
+
+opt_alias_clause:
+    alias_clause
+ |  %empty							{ $$ = std::nullopt; }
+ ;
+
+alias_clause:
+    AS IDENTIFIER[name] LP identifier_list[cols] RP		{ $$ = mkNode<TableAlias>(@$, $name); $$->columns = $cols; }
+ |  AS IDENTIFIER[name]						{ $$ = mkNode<TableAlias>(@$, $name); }
+ |  IDENTIFIER[name] LP identifier_list[cols] RP		{ $$ = mkNode<TableAlias>(@$, $name); $$->columns = $cols; }
+ |  IDENTIFIER[name]						{ $$ = mkNode<TableAlias>(@$, $name); }
+ ;
 
 where_clause:
     WHERE value_expr 						{ $$ = $value_expr; }

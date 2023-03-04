@@ -28,6 +28,7 @@ namespace psql_parse {
 
 	struct JoinExpr;
 	struct TableName;
+    struct TableAlias;
 	struct SelectExpr;
 	struct ValuesExpr;
 	struct SetOp;
@@ -62,6 +63,7 @@ namespace psql_parse {
 	using RelExpression = std::variant<
 			box<JoinExpr>,
 			box<TableName>,
+            box<TableAlias>,
 			box<SelectExpr>,
 			box<ValuesExpr>,
 			box<SetOp>,
@@ -177,6 +179,16 @@ namespace psql_parse {
 
 		explicit TableName(QualifiedName name);
 	};
+
+    struct TableAlias {
+        DEFAULT_EQ(TableAlias);
+
+        Name name;
+        std::vector<Name> columns;
+        RelExpression expression;
+
+        explicit TableAlias(Name name);
+    };
 
 	struct JoinExpr {
 		DEFAULT_EQ(JoinExpr);

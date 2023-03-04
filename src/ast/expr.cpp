@@ -34,6 +34,9 @@ namespace psql_parse {
 	TableName::TableName(QualifiedName name)
 	: name(std::move(name)) {}
 
+    TableAlias::TableAlias(Name name)
+    : name(std::move(name)) {}
+
 	SelectExpr::SelectExpr() = default;
 
 	SetOp::SetOp(RelExpression left, SetOp::Op op, RelExpression right)
