@@ -122,9 +122,9 @@ namespace psql_parse {
 		DEFAULT_EQ(Collate);
 
 		box<Var> var;
-		QualifiedName collation;
+		box<QualifiedName> collation;
 
-		Collate(Var* var, QualifiedName collation);
+		Collate(Var* var, box<QualifiedName> collation);
 	};
 
 	struct IsExpr {
@@ -175,9 +175,9 @@ namespace psql_parse {
 	struct TableName {
 		DEFAULT_EQ(TableName);
 
-		QualifiedName name;
+		box<QualifiedName> name;
 
-		explicit TableName(QualifiedName name);
+		explicit TableName(box<QualifiedName> name);
 	};
 
     struct TableAlias {

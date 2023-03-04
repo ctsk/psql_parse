@@ -37,7 +37,6 @@ namespace psql_parse {
 	struct TimeType { uint64_t precision; bool with_timezone; DEFAULT_SPACESHIP(TimeType); };
 	struct TimeStampType { uint64_t precision; bool with_timezone; DEFAULT_SPACESHIP(TimeStampType); };
 
-
 	using DataType = std::variant<
 			DecimalType,
 			FloatType,
@@ -59,10 +58,12 @@ namespace psql_parse {
 	using Name = std::string;
 
 	struct QualifiedName {
-		std::optional<Name> catalog = std::nullopt;
-		std::optional<Name> schema = std::nullopt;
+        DEFAULT_SPACESHIP(QualifiedName);
+
+        std::vector<Name> qualifier;
 		Name name;
-		friend auto operator<=>(const QualifiedName&, const QualifiedName&) = default;
+
+        explicit QualifiedName(Name name);
 	};
 
 	using DomainName = QualifiedName;

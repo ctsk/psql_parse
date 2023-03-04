@@ -139,7 +139,7 @@ TEST_CASE( "set operations", "set-ops" ) {
     SECTION( "intersect" ) {
         auto result = parser("select foo INTERSECT select bar from foo");
         auto rhs = makeSelect(new psql_parse::Var("bar"));
-        rhs->from_clause.push_back(new psql_parse::TableName(psql_parse::QualifiedName{.name = "foo"}));
+        rhs->from_clause.push_back(new psql_parse::TableName(new psql_parse::QualifiedName("foo")));
         auto expected = makeStmt(
                 new psql_parse::SetOp(
                         makeSelect(new psql_parse::Var("foo")),

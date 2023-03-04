@@ -223,6 +223,7 @@ unknown         { return psql_parse::parser::make_UNKNOWN(loc); }
 update          { return psql_parse::parser::make_UPDATE(loc); }
 user            { return psql_parse::parser::make_USER(loc); }
 using           { return psql_parse::parser::make_USING(loc); }
+values          { return psql_parse::parser::make_VALUES(loc); }
 varchar         { return psql_parse::parser::make_VARCHAR(loc); }
 varying         { return psql_parse::parser::make_VARYING(loc); }
 where           { return psql_parse::parser::make_WHERE(loc); }

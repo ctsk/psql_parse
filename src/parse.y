@@ -106,7 +106,7 @@ namespace psql_parse {
 	SESSION_USER SETS SET SMALLINT SELECT SYMMETRIC
 	SYSTEM_USER TABLE TEMPORARY TIES TIMESTAMP TIME
 	TRUE UNBOUNDED UNION UNIQUE UNKNOWN UPDATE USER
-	USING VARCHAR VARYING WHERE WINDOW WITH ZONE
+	USING VALUES VARCHAR VARYING WHERE WINDOW WITH ZONE
 
 %left UNION EXCEPT
 %left INTERSECT
@@ -141,23 +141,23 @@ namespace psql_parse {
 %type <uint64_t>						length_spec
 
 %type <std::vector<Name>>					identifier_list
-%type <QualifiedName>						qualified_name
+%type <box<QualifiedName>>					qualified_name
+%type <std::vector<Name>>					qualifier_list
 %type <std::optional<Temporary>>				opt_temporary
 %type <std::optional<OnCommit>>					opt_on_commit
 %type <std::vector<std::variant<ColumnDef, TableConstraint>>>	column_defs_and_constraints
 %type <std::variant<ColumnDef, TableConstraint>>		column_def_and_constraint
 %type <ColumnDef>						column_def
-%type <std::variant<DataType, DomainName>>			column_type
+%type <std::variant<DataType, box<DomainName>>>			column_type
 %type <std::optional<ColumnDefault>>				opt_default_clause
 %type <ColumnDefault>						default_clause
 %type <ColumnDefault>						default_option
 %type <std::vector<NamedColumnConstraint>>			opt_column_constraint_def
 %type <std::vector<NamedColumnConstraint>>			column_constraint_defs
 %type <NamedColumnConstraint>					column_constraint_def
-%type <std::optional<QualifiedName>>				opt_constraint_name
+%type <std::optional<box<QualifiedName>>>			opt_constraint_name
 %type <ColumnConstraint>					column_constraint
 %type <References*>						references_spec
-%type <std::pair<QualifiedName, std::vector<Name>>>		ref_table_cols
 %type <MatchOption>						opt_match
 %type <MatchOption>						match_type
 %type <ReferentialTriggeredAction>				opt_referential_triggered_action
@@ -165,7 +165,7 @@ namespace psql_parse {
 %type <ReferentialAction>					referential_action
 %type <ReferentialAction>					update_rule
 %type <ReferentialAction>					delete_rule
-%type <std::optional<QualifiedName>>				opt_collate_clause
+%type <std::optional<box<QualifiedName>>>			opt_collate_clause
 %type <TableConstraint>						table_constraint_def
 
 %type <Expression>						value_expr
@@ -339,9 +339,18 @@ identifier_list:
  ;
 
 qualified_name:
-    IDENTIFIER[catalog] DOT IDENTIFIER[schema] DOT IDENTIFIER[name]	{ $$ = QualifiedName { $catalog, $schema, $name}; }
- |  IDENTIFIER[schema] DOT IDENTIFIER[name]				{ $$ = QualifiedName { std::nullopt, $schema, $name}; }
- |  IDENTIFIER[name]							{ $$ = QualifiedName { std::nullopt, std::nullopt, $name}; }
+    qualifier_list[list]
+	{
+		auto last = std::move($list.back());
+		$list.pop_back();
+		$$ = mkNode<QualifiedName>(@$, std::move(last));
+		$$->qualifier = $list;
+	}
+
+ ;
+qualifier_list:
+    IDENTIFIER[name]						{ $$ = std::vector<Name>(); $$.emplace_back($name); }
+ |  qualifier_list[qn] DOT IDENTIFIER[name]			{ $qn.push_back($name); $$ = $qn; }
  ;
 
 /*
@@ -450,19 +459,15 @@ column_constraint:
  ;
 
 references_spec:
-    REFERENCES ref_table_cols opt_match opt_referential_triggered_action
+    REFERENCES qualified_name[table_name] LP identifier_list RP opt_match opt_referential_triggered_action
     	{
     		$$ = mkNode<References>(@$,
-    			$ref_table_cols.first,
-    			$ref_table_cols.second,
+    			$table_name,
+    			$identifier_list,
     			$opt_match,
     			$opt_referential_triggered_action
     		);
 	}
- ;
-
-ref_table_cols:
-    qualified_name[table_name] LP identifier_list RP		{ $$ = std::make_pair($table_name, $identifier_list); }
  ;
 
 opt_match:
@@ -762,6 +767,8 @@ simple_select:
 		expr->set_quantifier = $opt_set_quantifier;
 		$$ = expr;
 	}
+ |  VALUES LP value_expr_list RP				{ $$ = mkNode<ValuesExpr>(@$, $value_expr_list); }
+ |  TABLE qualified_name[table_name]				{ $$ = mkNode<TableName>(@$, $table_name); }
  |  select_clause[left] UNION opt_set_quantifier[quant] select_clause[right]
 	{
 		auto expr = mkNode<SetOp>(@$, $left, SetOp::Op::UNION, $right);

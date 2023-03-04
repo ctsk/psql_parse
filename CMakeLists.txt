@@ -77,6 +77,7 @@ set(SOURCES
 
         "${CMAKE_SOURCE_DIR}/src/ast/expr.cpp"
         "${CMAKE_SOURCE_DIR}/src/ast/stmt.cpp"
+        "${CMAKE_SOURCE_DIR}/src/ast/common.cpp"
         "${CMAKE_SOURCE_DIR}/src/ast/create.cpp"
         "${CMAKE_SOURCE_DIR}/src/ast/select.cpp")
 

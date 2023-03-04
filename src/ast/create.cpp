@@ -4,7 +4,7 @@
 
 namespace psql_parse {
 
-	CreateStatement::CreateStatement(QualifiedName relName, std::optional<Temporary> temp,
+	CreateStatement::CreateStatement(box<QualifiedName> relName, std::optional<Temporary> temp,
 									 std::optional<OnCommit> onCommit,
 									 std::vector<std::variant<ColumnDef, TableConstraint>> elements)
 	: rel_name(std::move(relName)), temp(temp), on_commit(onCommit), column_defs(), table_constraints() {
@@ -21,7 +21,7 @@ namespace psql_parse {
 		}
 	}
 
-	CreateStatement::CreateStatement(QualifiedName relName)
+	CreateStatement::CreateStatement(box<QualifiedName> relName)
 	: rel_name(std::move(relName))
 	, temp(std::nullopt)
 	, on_commit(std::nullopt)
@@ -30,6 +30,6 @@ namespace psql_parse {
 
 	ColumnDef::ColumnDef() = default;
 
-	ColumnDef::ColumnDef(Name name, std::variant<DataType, DomainName> type)
+	ColumnDef::ColumnDef(Name name, std::variant<DataType, box<DomainName>> type)
 	: name(std::move(name)), type(std::move(type)) {}
 }

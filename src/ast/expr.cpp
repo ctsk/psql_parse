@@ -31,7 +31,7 @@ namespace psql_parse {
 		qualifier = std::move(expr);
 	}
 
-	TableName::TableName(QualifiedName name)
+	TableName::TableName(box<QualifiedName> name)
 	: name(std::move(name)) {}
 
     TableAlias::TableAlias(Name name)
@@ -51,7 +51,7 @@ namespace psql_parse {
 	IsExpr::IsExpr(Expression inner, BoolLiteral truth_value)
 	: inner(std::move(inner)), truth_value(truth_value) {}
 
-	Collate::Collate(Var* var, QualifiedName collation)
+	Collate::Collate(Var* var, box<QualifiedName> collation)
 	: var(var), collation(std::move(collation)) {}
 
 	BetweenPred::BetweenPred(Expression val, Expression low, Expression high)

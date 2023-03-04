@@ -56,7 +56,7 @@ namespace psql_parse {
 	struct References {
 		DEFAULT_EQ(References);
 
-		QualifiedName rel_name;
+		box<QualifiedName> rel_name;
 		std::vector<Name> col_names;
 		MatchOption match_type;
 		ReferentialTriggeredAction action;
@@ -68,7 +68,7 @@ namespace psql_parse {
 
 	struct NamedColumnConstraint {
 		DEFAULT_EQ(NamedColumnConstraint);
-		std::optional<QualifiedName> name = std::nullopt;
+		std::optional<box<QualifiedName>> name = std::nullopt;
 		std::variant<
 				ConstraintType,
 				box<References>> constraint;
@@ -78,15 +78,15 @@ namespace psql_parse {
 		DEFAULT_EQ(ColumnDef);
 
 		Name name;
-		std::variant<DataType, DomainName> type;
+		std::variant<DataType, box<DomainName>> type;
 		std::optional<ColumnDefault> col_default;
 		std::vector<NamedColumnConstraint> col_constraint;
-		std::optional<QualifiedName> collate;
+		std::optional<box<QualifiedName>> collate;
 
 		// required by bison
 		ColumnDef();
 
-		ColumnDef(Name name, std::variant<DataType, DomainName> type);
+		ColumnDef(Name name, std::variant<DataType, box<DomainName>> type);
 	};
 
 	struct TableUniqueConstraint {
@@ -109,14 +109,14 @@ namespace psql_parse {
 			TableForeignKeyConstraint>;
 
 	struct CreateStatement {
-		QualifiedName rel_name;
+		box<QualifiedName> rel_name;
 		std::optional<Temporary> temp = std::nullopt;
 		std::optional<OnCommit> on_commit = std::nullopt;
 		std::vector<ColumnDef> column_defs;
 		std::vector<TableConstraint> table_constraints;
 
-		explicit CreateStatement(QualifiedName relName);
-		CreateStatement(QualifiedName relName, std::optional<Temporary> temp, std::optional<OnCommit> onCommit, std::vector<std::variant<ColumnDef, TableConstraint>> elements);
+		explicit CreateStatement(box<QualifiedName> relName);
+		CreateStatement(box<QualifiedName> relName, std::optional<Temporary> temp, std::optional<OnCommit> onCommit, std::vector<std::variant<ColumnDef, TableConstraint>> elements);
 	};
 }
 
