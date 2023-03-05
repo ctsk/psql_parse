@@ -4,6 +4,7 @@
 #include <variant>
 #include <vector>
 
+#include "psql_parse/ast/data_types.hpp"
 #include "psql_parse/ast/expr.hpp"
 
 namespace psql_parse {
@@ -78,7 +79,7 @@ namespace psql_parse {
 		DEFAULT_EQ(ColumnDef);
 
 		Name name;
-		std::variant<DataType, box<DomainName>> type;
+        DataType type;
 		std::optional<ColumnDefault> col_default;
 		std::vector<NamedColumnConstraint> col_constraint;
 		std::optional<box<QualifiedName>> collate;
@@ -86,7 +87,7 @@ namespace psql_parse {
 		// required by bison
 		ColumnDef();
 
-		ColumnDef(Name name, std::variant<DataType, box<DomainName>> type);
+		ColumnDef(Name name, DataType type);
 	};
 
 	struct TableUniqueConstraint {

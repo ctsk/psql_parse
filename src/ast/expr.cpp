@@ -2,7 +2,7 @@
 
 namespace psql_parse {
 
-	IntegerLiteral::IntegerLiteral(int64_t value)
+	IntegerLiteral::IntegerLiteral(uint64_t value)
 	: value(value) {}
 
 	FloatLiteral::FloatLiteral(double value)

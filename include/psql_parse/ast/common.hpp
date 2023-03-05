@@ -20,40 +20,6 @@ namespace psql_parse {
 	};
 
 
-	struct DecimalType { std::optional<uint64_t> precision, scale; DEFAULT_SPACESHIP(DecimalType); };
-	struct FloatType { std::optional<uint64_t> precision; DEFAULT_SPACESHIP(FloatType); };
-	struct IntegerType { DEFAULT_SPACESHIP(IntegerType); };
-	struct NumericType { std::optional<uint64_t> precision, scale;DEFAULT_SPACESHIP(NumericType); };
-	struct SmallIntType { DEFAULT_SPACESHIP(SmallIntType); };
-	struct RealType {DEFAULT_SPACESHIP(RealType); };
-	struct DoublePrecisionType {DEFAULT_SPACESHIP(DoublePrecisionType); };
-	struct CharType { uint64_t length; DEFAULT_SPACESHIP(CharType); };
-	struct VarCharType { uint64_t length; DEFAULT_SPACESHIP(VarCharType); };
-	struct NationalCharType { uint64_t length; DEFAULT_SPACESHIP(NationalCharType); };
-	struct NationalVarCharType { uint64_t length; DEFAULT_SPACESHIP(NationalVarCharType); };
-	struct Bit { uint64_t length; DEFAULT_SPACESHIP(Bit); };
-	struct VarBit { uint64_t length; DEFAULT_SPACESHIP(VarBit); };
-	struct DateType {DEFAULT_SPACESHIP(DateType); };
-	struct TimeType { uint64_t precision; bool with_timezone; DEFAULT_SPACESHIP(TimeType); };
-	struct TimeStampType { uint64_t precision; bool with_timezone; DEFAULT_SPACESHIP(TimeStampType); };
-
-	using DataType = std::variant<
-			DecimalType,
-			FloatType,
-			IntegerType,
-			NumericType,
-			SmallIntType,
-			RealType,
-			DoublePrecisionType,
-			CharType,
-			VarCharType,
-			NationalCharType,
-			NationalVarCharType,
-			Bit,
-			VarBit,
-			DateType,
-			TimeType,
-			TimeStampType>;
 
 	using Name = std::string;
 

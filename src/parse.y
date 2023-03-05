@@ -68,7 +68,7 @@ namespace psql_parse {
 
 %token END 0 "end of file"
 
-%token <int>		INTEGER_VALUE	"integer_value"
+%token <uint64_t>	INTEGER_VALUE	"integer_value"
 %token <double>		FLOAT_VALUE	"float_value"
 %token <std::string>	IDENTIFIER	"identifier"
 %token <std::string>	STRING_VALUE	"string"
@@ -77,6 +77,8 @@ namespace psql_parse {
 %token <std::string>	NATIONAL_VALUE	"nat_string"
 %token 			LP		"("
 %token 			RP		")"
+%token 			LB		"["
+%token 			RB		"]"
 %token 			DOT		"."
 %token 			COMMA		","
 %token 			SEMICOLON	";"
@@ -92,21 +94,21 @@ namespace psql_parse {
 %token 			GREATER		">"
 %token 			QUOTE		"'"
 
-%token 	ACTION ALL AND ASYMMETRIC ASC AS BETWEEN BIT
-	BY CASCADE CHARACTER COLLATE COMMIT CONSTRAINT
+%token 	ACTION ALL AND ARRAY ASYMMETRIC ASC AS BETWEEN BIGINT BINARY BIT BLOB BOOLEAN
+	BY CASCADE CHARACTERS CHARACTER CLOB COLLATE COMMIT CONSTRAINT
 	CREATE CROSS CUBE CURRENT_USER CURRENT DATE
 	DECIMAL DEFAULT DELETE DESC DISTINCT DOUBLE
 	EXCEPT EXCLUDE FALSE FETCH FIRST FLOAT FOLLOWING
 	FOREIGN FROM FULL GLOBAL GROUPING GROUPS GROUP
-	HAVING INNER INTEGER INTERSECT IN JOIN KEY LAST
-	LEFT LOCAL MATCH NATIONAL NATURAL NCHAR NEXT NOT NO
-	NULLS NULL NUMERIC OFFSET ONLY ON ORDER OR OTHERS OUTER PARTIAL
+	HAVING INNER INTEGER INTERSECT IN JOIN KEY LARGE LAST
+	LEFT LOCAL MATCH MULTISET NATIONAL NATURAL NCHAR NCLOB NEXT NOT NO
+	NULLS NULL NUMERIC OBJECT OCTETS OFFSET ONLY ON ORDER OR OTHERS OUTER PARTIAL
 	PARTITION PERCENT PRECEDING PRECISION PRESERVE PRIMARY
-	RANGE REAL REFERENCES RIGHT ROLLUP ROWS ROW
+	RANGE REAL REFERENCES REF RIGHT ROLLUP ROWS ROW SCOPE
 	SESSION_USER SETS SET SMALLINT SELECT SYMMETRIC
 	SYSTEM_USER TABLE TEMPORARY TIES TIMESTAMP TIME
 	TRUE UNBOUNDED UNION UNIQUE UNKNOWN UPDATE USER
-	USING VALUES VARCHAR VARYING WHERE WINDOW WITH ZONE
+	USING VALUES VARBINARY VARCHAR VARYING WHERE WINDOW WITHOUT WITH ZONE
 
 %left UNION EXCEPT
 %left INTERSECT
@@ -132,13 +134,20 @@ namespace psql_parse {
 %type <Statement>						CreateStatement
 
 %type <DataType>						data_type
-%type <bool>							opt_with_time_zone
-%type <uint64_t>						opt_time_precision
-%type <uint64_t>						opt_timestamp_precision
+%type <std::pair<std::optional<uint64_t>, std::optional<uint64_t>>>		precision_scale_spec
 %type <std::optional<uint64_t>>					precision_spec
-%type <std::pair<std::optional<uint64_t>, uint64_t>>		precision_scale_spec
-%type <uint64_t>						opt_length_spec
+%type <std::optional<uint64_t>>					opt_length_spec
 %type <uint64_t>						length_spec
+%type <std::optional<CharLength>>				opt_char_length
+%type <CharLength>						char_length
+%type <std::optional<CharLength::Unit>>				opt_char_unit
+%type <std::optional<bool>>					opt_with_without_tz
+%type <std::optional<uint64_t>>					opt_time_precision
+%type <std::optional<uint64_t>>					opt_timestamp_precision
+%type <std::optional<uint64_t>>					opt_cardinality_clause
+%type <std::optional<box<QualifiedName>>>			opt_scope_clause
+%type <std::vector<RowType::FieldDef>>				field_def_list
+%type <RowType::FieldDef>					field_def
 
 %type <std::vector<Name>>					identifier_list
 %type <box<QualifiedName>>					qualified_name
@@ -276,29 +285,84 @@ general_literal:
 
 /* Missing: INTERVAL */
 data_type:
-    DECIMAL precision_scale_spec[spec]				{ $$ = DecimalType { $spec.first, $spec.second }; }
+    NUMERIC precision_scale_spec[spec]				{ $$ = NumericType { $spec.first, $spec.second }; }
+ |  DECIMAL precision_scale_spec[spec]				{ $$ = DecimalType { $spec.first, $spec.second }; }
+ |  SMALLINT 							{ $$ = SmallIntType {}; }
+ |  INTEGER 							{ $$ = IntegerType {}; }
+ |  BIGINT 							{ $$ = BigIntType {}; }
+
  |  FLOAT precision_spec[spec]					{ $$ = FloatType { $spec }; }
- |  INTEGER 							{ $$ = IntegerType { }; }
- |  NUMERIC precision_scale_spec[spec]				{ $$ = NumericType { $spec.first, $spec.second }; }
- |  SMALLINT 							{ $$ = SmallIntType { }; }
- |  REAL	 						{ $$ = RealType { }; }
- |  DOUBLE PRECISION						{ $$ = DoublePrecisionType { }; }
- |  CHARACTER opt_length_spec 					{ $$ = CharType { $opt_length_spec }; }
- |  CHARACTER VARYING length_spec				{ $$ = VarCharType { $length_spec }; }
- |  NATIONAL CHARACTER opt_length_spec				{ $$ = NationalCharType { $opt_length_spec }; }
- |  NATIONAL CHARACTER VARYING length_spec			{ $$ = NationalVarCharType { $length_spec }; }
- |  NCHAR opt_length_spec					{ $$ = NationalCharType { $opt_length_spec }; }
- |  NCHAR VARYING length_spec					{ $$ = NationalVarCharType { $length_spec }; }
- |  BIT opt_length_spec						{ $$ = Bit { $opt_length_spec }; }
- |  BIT VARYING length_spec					{ $$ = VarBit { $length_spec }; }
- |  DATE							{ $$ = DateType { }; }
- |  TIME opt_time_precision opt_with_time_zone			{ $$ = TimeType { $opt_time_precision, $opt_with_time_zone }; }
- |  TIMESTAMP opt_timestamp_precision opt_with_time_zone	{ $$ = TimeType { $opt_timestamp_precision, $opt_with_time_zone }; }
+ |  REAL	 						{ $$ = RealType {}; }
+ |  DOUBLE PRECISION						{ $$ = DoublePrecisionType {}; }
+
+ |  BINARY opt_length_spec 					{ $$ = BinaryType { $opt_length_spec }; }
+ |  varying_binary opt_length_spec				{ $$ = VarBinaryType { $opt_length_spec }; }
+ |  blob opt_length_spec	 				{ $$ = BlobType { $opt_length_spec }; }
+
+ |  CHARACTER opt_char_length 					{ $$ = CharType { $opt_char_length }; }
+ |  varying_char char_length					{ $$ = VarCharType { $char_length }; }
+ |  clob opt_char_length					{ $$ = ClobType { $opt_char_length }; }
+ |  national_char opt_char_length				{ $$ = NationalCharType { $opt_char_length }; }
+ |  national_char VARYING char_length				{ $$ = NationalVarCharType { $char_length }; }
+ |  national_clob opt_char_length				{ $$ = NationalClobType { $opt_char_length }; }
+
+ |  BOOLEAN							{ $$ = BooleanType {}; }
+
+ |  DATE							{ $$ = DateType {}; }
+ |  TIME opt_time_precision opt_with_without_tz			{ $$ = TimeType { $opt_time_precision, $opt_with_without_tz }; }
+ |  TIMESTAMP opt_timestamp_precision opt_with_without_tz	{ $$ = TimestampType { $opt_timestamp_precision, $opt_with_without_tz }; }
+
+ |  ROW LP field_def_list RP					{ $$ = mkNode<RowType>(@$, $field_def_list); }
+ |  REF LP qualified_name[inner_type] RP opt_scope_clause	{ $$ = mkNode<RefType>(@$, UserDefinedType { $inner_type }, $opt_scope_clause); }
+ |  data_type[inner_type] ARRAY opt_cardinality_clause		{ $$ = mkNode<ArrayType>(@$, $inner_type, $opt_cardinality_clause); }
+ |  data_type[inner_type] MULTISET				{ $$ = mkNode<MultiSetType>(@$, $inner_type); }
+ |  qualified_name						{ $$ = UserDefinedType { $qualified_name }; }
  ;
 
-opt_with_time_zone:
+varying_char: CHARACTER VARYING | VARCHAR ;
+varying_binary: BINARY VARYING | VARBINARY ;
+national_char: NATIONAL CHARACTER | NCHAR ;
+national_clob: national_char LARGE OBJECT | NCLOB ;
+clob: CHARACTER LARGE OBJECT | CLOB ;
+blob: BINARY LARGE OBJECT | BLOB ;
+
+precision_scale_spec:
+    LP INTEGER_VALUE[precision] COMMA INTEGER_VALUE[scale] RP 	{ $$ = std::make_pair($precision, $scale); }
+ |  LP INTEGER_VALUE[precision] RP				{ $$ = std::make_pair($precision, std::nullopt); }
+ |  %empty							{ $$ = std::make_pair(std::nullopt, std::nullopt); }
+ ;
+
+precision_spec:
+    LP INTEGER_VALUE RP						{ $$ = $INTEGER_VALUE; }
+ |  %empty							{ $$ = std::nullopt; }
+ ;
+
+opt_length_spec:
+    length_spec
+ |  %empty							{ $$ = std::nullopt; }
+ ;
+
+length_spec: LP INTEGER_VALUE RP 				{ $$ = $INTEGER_VALUE; };
+
+opt_char_length:
+    char_length
+ |  %empty							{ $$ = std::nullopt; }
+ ;
+
+char_length:
+    INTEGER_VALUE[length] opt_char_unit				{ $$ = CharLength { $length, $opt_char_unit }; }
+ ;
+
+opt_char_unit:
+    CHARACTERS							{ $$ = CharLength::Unit::CHARACTERS; }
+ |  OCTETS							{ $$ = CharLength::Unit::OCTETS; }
+ |  %empty							{ $$ = std::nullopt; }
+ ;
+
+opt_with_without_tz:
     WITH TIME ZONE						{ $$ = true; }
- |  %empty							{ $$ = false; }
+ |  WITHOUT TIME ZONE						{ $$ = false; }
+ |  %empty							{ $$ = std::nullopt; }
  ;
 
 opt_time_precision:
@@ -311,23 +375,25 @@ opt_timestamp_precision:
  |  %empty							{ $$ = 6; }
  ;
 
-precision_scale_spec:
-    LP INTEGER_VALUE[precision] COMMA INTEGER_VALUE[scale] RP 	{ $$ = std::make_pair($precision, $scale); }
- |  LP INTEGER_VALUE[precision] RP				{ $$ = std::make_pair($precision, 0); }
- |  %empty							{ $$ = std::make_pair(std::nullopt, 0); }
- ;
-
-precision_spec:
-    LP INTEGER_VALUE RP
+opt_cardinality_clause:
+    LB INTEGER_VALUE[card] RB					{ $$ = $card; }
  |  %empty							{ $$ = std::nullopt; }
  ;
 
-opt_length_spec:
-    length_spec
- |  %empty							{ $$ = 1; }
+field_def_list:
+    field_def							{ $$ = std::vector<RowType::FieldDef>(); $$.push_back($field_def); }
+ |  field_def_list[list] COMMA field_def			{ $list.push_back($field_def); $$ = $list; }
  ;
 
-length_spec: LP INTEGER_VALUE RP 				{ $$ = $INTEGER_VALUE; };
+field_def:
+    IDENTIFIER[name] data_type					{ $$ = std::make_pair($name, $data_type); }
+ ;
+
+opt_scope_clause:
+    SCOPE qualified_name					{ $$ = $qualified_name; }
+ |  %empty							{ $$ = std::nullopt; }
+ ;
+
 
 /*
  *   Handling Identifiers
@@ -392,19 +458,21 @@ column_def_and_constraint:
  ;
 
 column_def:
-    IDENTIFIER[column_name] column_type opt_default_clause opt_column_constraint_def opt_collate_clause
+    IDENTIFIER[column_name] data_type opt_default_clause opt_column_constraint_def opt_collate_clause
 	{
-		$$ = ColumnDef($column_name, $column_type);
+		$$ = ColumnDef($column_name, $data_type);
 		$$.col_default = $opt_default_clause;
 		$$.col_constraint = $opt_column_constraint_def;
 		$$.collate = $opt_collate_clause;
 	}
  ;
 
+/*
 column_type:
     data_type
  |  qualified_name[domain_name]
  ;
+*/
 
 opt_default_clause:
     default_clause

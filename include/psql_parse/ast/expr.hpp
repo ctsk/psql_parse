@@ -82,9 +82,9 @@ namespace psql_parse {
     struct IntegerLiteral {
 		DEFAULT_EQ(IntegerLiteral);
 
-		std::int64_t value;
+		std::uint64_t value;
 
-		explicit IntegerLiteral(std::int64_t value);
+		explicit IntegerLiteral(std::uint64_t value);
 	};
 
     struct FloatLiteral {
