@@ -158,6 +158,7 @@ delete          { return psql_parse::parser::make_DELETE(loc); }
 desc            { return psql_parse::parser::make_DESC(loc); }
 distinct        { return psql_parse::parser::make_DISTINCT(loc); }
 double          { return psql_parse::parser::make_DOUBLE(loc); }
+escape          { return psql_parse::parser::make_ESCAPE(loc); }
 except          { return psql_parse::parser::make_EXCEPT(loc); }
 exclude         { return psql_parse::parser::make_EXCLUDE(loc); }
 false           { return psql_parse::parser::make_FALSE(loc); }
@@ -183,6 +184,7 @@ key             { return psql_parse::parser::make_KEY(loc); }
 large           { return psql_parse::parser::make_LARGE(loc); }
 last            { return psql_parse::parser::make_LAST(loc); }
 left            { return psql_parse::parser::make_LEFT(loc); }
+like            { return psql_parse::parser::make_LIKE(loc); }
 local           { return psql_parse::parser::make_LOCAL(loc); }
 match           { return psql_parse::parser::make_MATCH(loc); }
 multiset        { return psql_parse::parser::make_MULTISET(loc); }

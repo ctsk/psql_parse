@@ -99,10 +99,10 @@ namespace psql_parse {
 	BY CASCADE CHARACTERS CHARACTER CLOB COLLATE COMMIT CONSTRAINT
 	CREATE CROSS CUBE CURRENT_USER CURRENT DATE
 	DECIMAL DEFAULT DELETE DESC DISTINCT DOUBLE
-	EXCEPT EXCLUDE FALSE FETCH FIRST FLOAT FOLLOWING
+	ESCAPE EXCEPT EXCLUDE FALSE FETCH FIRST FLOAT FOLLOWING
 	FOREIGN FROM FULL GLOBAL GROUPING GROUPS GROUP
 	HAVING INNER INTEGER INTERSECT IN JOIN KEY LARGE LAST
-	LEFT LOCAL MATCH MULTISET NATIONAL NATURAL NCHAR NCLOB NEXT NOT NO
+	LEFT LIKE LOCAL MATCH MULTISET NATIONAL NATURAL NCHAR NCLOB NEXT NOT NO
 	NULLS NULL NUMERIC OBJECT OCTETS OFFSET ONLY ON ORDER OR OTHERS OUTER PARTIAL
 	PARTITION PERCENT PRECEDING PRECISION PRESERVE PRIMARY
 	RANGE REAL REFERENCES REF RIGHT ROLLUP ROWS ROW SCOPE
@@ -118,7 +118,7 @@ namespace psql_parse {
 %right NOT
 %nonassoc IS
 %nonassoc LESS GREATER EQUAL LESS_EQUAL GREATER_EQUAL NOT_EQUAL COMP_OP
-%right BETWEEN IN
+%right BETWEEN IN LIKE
 %left PLUS MINUS
 %left STAR SLASH
 %left CONCAT
@@ -190,6 +190,7 @@ namespace psql_parse {
 %type <Expression>						bool_predicand
 %type <BinaryOp::Op>						comp_op
 %type <Expression>						value_expr_no_parens
+%type <std::optional<Expression>>				opt_escape
 
 %type <Statement>						SelectStatement
 %type <box<Query>>						select_no_parens
@@ -642,6 +643,18 @@ bool_predicand:
  	}
  |  bool_predicand[val] IN in_expr[rel] 	%prec IN	{ $$ = mkNode<InPred>(@$, $val, $rel); }
  |  bool_predicand[val] NOT IN in_expr[rel]	%prec IN 	{ $$ = mkNotNode<InPred>(@$, $val, $rel); }
+ |  bool_predicand[val] LIKE common_value_expr[pat] opt_escape	 	%prec LIKE
+	{
+		auto likeNode =  mkNode<LikePred>(@$, $val, $pat);
+		likeNode->escape = $opt_escape;
+		$$ = std::move(likeNode);
+	}
+ |  bool_predicand[val] NOT LIKE common_value_expr[pat] opt_escape	%prec LIKE
+	{
+		auto likeNode = mkNode<LikePred>(@$, $val, $pat);
+		likeNode->escape = $opt_escape;
+		$$ = mkNode<UnaryOp>(@$, UnaryOp::Op::NOT, std::move(likeNode));
+	}
  ;
 
 /*
@@ -661,6 +674,11 @@ in_expr:
 value_expr_list:
     value_expr[elem]						{ $$ = std::vector<Expression>(); $$.emplace_back($elem); }
  |  value_expr_list[list] COMMA value_expr[elem]		{ $list.emplace_back($elem); $$ = $list; }
+ ;
+
+opt_escape:
+    ESCAPE common_value_expr					{ $$ = $common_value_expr; }
+ |  %empty							{ $$ = std::nullopt; }
  ;
 
 common_value_expr:

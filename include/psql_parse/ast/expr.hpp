@@ -18,6 +18,7 @@ namespace psql_parse {
 	struct IsExpr;
 	struct BetweenPred;
 	struct InPred;
+    struct LikePred;
 	struct SortSpec;
 	struct RowExpr;
 
@@ -48,6 +49,7 @@ namespace psql_parse {
 			box<IsExpr>,
 			box<BetweenPred>,
 			box<InPred>,
+            box<LikePred>,
 			box<SortSpec>,
 			box<GroupingSet>,
 			box<GroupingSets>,
@@ -433,5 +435,15 @@ namespace psql_parse {
 		bool symmetric;
 
 		InPred(Expression val, RelExpression rows);
+	};
+
+	struct LikePred {
+		DEFAULT_EQ(LikePred);
+
+		Expression val;
+		Expression pattern;
+		std::optional<Expression> escape;
+
+		LikePred(Expression val, Expression pattern);
 	};
 }
