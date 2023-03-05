@@ -93,6 +93,7 @@ namespace psql_parse {
 %token 			GREATER_EQUAL	">="
 %token 			GREATER		">"
 %token 			QUOTE		"'"
+%token 			CONCAT		"||"
 
 %token 	ACTION ALL AND ARRAY ASYMMETRIC ASC AS BETWEEN BIGINT BINARY BIT BLOB BOOLEAN
 	BY CASCADE CHARACTERS CHARACTER CLOB COLLATE COMMIT CONSTRAINT
@@ -120,7 +121,10 @@ namespace psql_parse {
 %right BETWEEN IN
 %left PLUS MINUS
 %left STAR SLASH
+%left CONCAT
+%left COLLATE
 %precedence SUBQUERY_AS_EXPR
+%left LB RB
 %left LP RP
 %left JOIN CROSS LEFT FULL RIGHT INNER NATURAL
 
@@ -157,7 +161,6 @@ namespace psql_parse {
 %type <std::vector<std::variant<ColumnDef, TableConstraint>>>	column_defs_and_constraints
 %type <std::variant<ColumnDef, TableConstraint>>		column_def_and_constraint
 %type <ColumnDef>						column_def
-%type <std::variant<DataType, box<DomainName>>>			column_type
 %type <std::optional<ColumnDefault>>				opt_default_clause
 %type <ColumnDefault>						default_clause
 %type <ColumnDefault>						default_option
@@ -467,13 +470,6 @@ column_def:
 	}
  ;
 
-/*
-column_type:
-    data_type
- |  qualified_name[domain_name]
- ;
-*/
-
 opt_default_clause:
     default_clause
  |  %empty							{ $$ = std::nullopt; }
@@ -671,6 +667,8 @@ common_value_expr:
     select_with_parens		%prec SUBQUERY_AS_EXPR		{ $$ = mkNode<RowSubquery>(@$, $select_with_parens); }
  |  LP value_expr RP						{ $$ = $value_expr; }
  |  value_expr_no_parens					{ $$ = $value_expr_no_parens; }
+ |  common_value_expr[left] CONCAT common_value_expr[right]	{ $$ = mkNode<BinaryOp>(@$, $left, BinaryOp::Op::CONCAT, $right); }
+ |  common_value_expr[left] COLLATE qualified_name[coll]	{ $$ = mkNode<Collate>(@$, $left, $coll); }
  |  common_value_expr[left] MINUS common_value_expr[right]	{ $$ = mkNode<BinaryOp>(@$, $left, BinaryOp::Op::SUB, $right); }
  |  common_value_expr[left] PLUS common_value_expr[right]	{ $$ = mkNode<BinaryOp>(@$, $left, BinaryOp::Op::ADD, $right); }
  |  common_value_expr[left] SLASH common_value_expr[right]	{ $$ = mkNode<BinaryOp>(@$, $left, BinaryOp::Op::MULT, $right); }
@@ -784,8 +782,8 @@ offset_clause:
  ;
 
 opt_fetch_first_clause:
-    fetch_first_clause
- |  %empty
+    fetch_first_clause						{ $$ = $fetch_first_clause; }
+ |  %empty							{ $$ = std::nullopt; }
  ;
 
 fetch_first_clause:

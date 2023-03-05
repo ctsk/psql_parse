@@ -51,8 +51,8 @@ namespace psql_parse {
 	IsExpr::IsExpr(Expression inner, BoolLiteral truth_value)
 	: inner(std::move(inner)), truth_value(truth_value) {}
 
-	Collate::Collate(Var* var, box<QualifiedName> collation)
-	: var(var), collation(std::move(collation)) {}
+	Collate::Collate(Expression var, box<QualifiedName> collation)
+	: var(std::move(var)), collation(std::move(collation)) {}
 
 	BetweenPred::BetweenPred(Expression val, Expression low, Expression high)
 	: val(std::move(val)), low(std::move(low)), high(std::move(high)), symmetric(false) {}

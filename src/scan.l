@@ -121,6 +121,7 @@ xidentinside    [^"]+
 "<"             { return psql_parse::parser::make_LESS(loc); }
 ">="            { return psql_parse::parser::make_GREATER_EQUAL(loc); }
 ">"             { return psql_parse::parser::make_GREATER(loc); }
+"||"            { return psql_parse::parser::make_CONCAT(loc); }
 
 action          { return psql_parse::parser::make_ACTION(loc); }
 all             { return psql_parse::parser::make_ALL(loc); }

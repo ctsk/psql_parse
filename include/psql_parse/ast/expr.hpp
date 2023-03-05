@@ -121,10 +121,10 @@ namespace psql_parse {
 	struct Collate {
 		DEFAULT_EQ(Collate);
 
-		box<Var> var;
+		Expression var;
 		box<QualifiedName> collation;
 
-		Collate(Var* var, box<QualifiedName> collation);
+		Collate(Expression var, box<QualifiedName> collation);
 	};
 
 	struct IsExpr {
@@ -162,7 +162,8 @@ namespace psql_parse {
 			ADD, SUB, MULT, DIV,
 			LESS, LESS_EQUAL,
 			GREATER, GREATER_EQUAL,
-			EQUAL, NOT_EQUAL
+			EQUAL, NOT_EQUAL,
+			CONCAT
 		};
 
 		Op op;
