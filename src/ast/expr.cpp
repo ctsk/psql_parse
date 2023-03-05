@@ -66,6 +66,12 @@ namespace psql_parse {
 	LikePred::LikePred(Expression val, Expression pattern)
 	: val(std::move(val)), pattern(std::move(pattern)), escape(std::nullopt) {}
 
+	ExistsPred::ExistsPred(box<Query> subquery)
+	: subquery(std::move(subquery)) {}
+
+	UniquePred::UniquePred(box<Query> subquery)
+	: subquery(std::move(subquery)) {}
+
 	SortSpec::SortSpec(Expression expr)
 	: expr(std::move(expr)) {}
 

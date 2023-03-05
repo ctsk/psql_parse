@@ -19,6 +19,8 @@ namespace psql_parse {
 	struct BetweenPred;
 	struct InPred;
     struct LikePred;
+	struct ExistsPred;
+	struct UniquePred;
 	struct SortSpec;
 	struct RowExpr;
 
@@ -50,6 +52,8 @@ namespace psql_parse {
 			box<BetweenPred>,
 			box<InPred>,
             box<LikePred>,
+		    box<ExistsPred>,
+		    box<UniquePred>,
 			box<SortSpec>,
 			box<GroupingSet>,
 			box<GroupingSets>,
@@ -445,5 +449,21 @@ namespace psql_parse {
 		std::optional<Expression> escape;
 
 		LikePred(Expression val, Expression pattern);
+	};
+
+	struct ExistsPred {
+		DEFAULT_EQ(ExistsPred);
+
+		box<Query> subquery;
+
+		ExistsPred(box<Query> subquery);
+	};
+
+	struct UniquePred {
+		DEFAULT_EQ(UniquePred);
+
+		box<Query> subquery;
+
+		UniquePred(box<Query> subquery);
 	};
 }

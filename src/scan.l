@@ -161,6 +161,7 @@ double          { return psql_parse::parser::make_DOUBLE(loc); }
 escape          { return psql_parse::parser::make_ESCAPE(loc); }
 except          { return psql_parse::parser::make_EXCEPT(loc); }
 exclude         { return psql_parse::parser::make_EXCLUDE(loc); }
+exists          { return psql_parse::parser::make_EXISTS(loc); }
 false           { return psql_parse::parser::make_FALSE(loc); }
 fetch           { return psql_parse::parser::make_FETCH(loc); }
 first           { return psql_parse::parser::make_FIRST(loc); }
