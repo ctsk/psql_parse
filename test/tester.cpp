@@ -4,6 +4,7 @@
 #include "catch2/catch_test_macros.hpp"
 
 #include "psql_parse/driver.hpp"
+#include "psql_parse/visit.hpp"
 
 using Expression = psql_parse::Expression;
 using Statement = psql_parse::Statement;
@@ -293,12 +294,31 @@ TEST_CASE( "supported concepts", "[cov]") {
             "select foo FETCH FIRST ROW WITH TIES",
             "select foo FETCH NEXT 1 ROW WITH TIES",
             "select foo FETCH NEXT 10 PERCENT ROWS ONLY",
-
+            /*
+             * Exists predicate
+             */
+            "select foo from bar where exists (select 1)",
+            /*
+             * Unique predicate on a subquery
+             */
+            "select foo from bar where unique (select 1)",
 
     };
 
     for (auto const &c : concepts) {
         parser(c);
     }
+}
+
+TEST_CASE( "visit tests" ) {
+    using namespace psql_parse;
+
+    Expression expr2 = new BinaryOp(
+            new IntegerLiteral(1),
+            BinaryOp::Op::ADD,
+            new IntegerLiteral(2));
+
+    printer p{ std::cout };
+    p.print(expr2);
 }
 

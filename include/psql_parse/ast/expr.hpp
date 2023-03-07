@@ -311,9 +311,9 @@ namespace psql_parse {
  		*/
 		std::vector<Expression> target_list;
 		std::vector<RelExpression> from_clause;
-		Expression where_clause;
+		std::optional<Expression> where_clause;
 		std::optional<GroupClause> group_clause;
-		Expression having_clause;
+		std::optional<Expression> having_clause;
 		std::vector<box<Window>> window_clause;
 		std::optional<SetQuantifier> set_quantifier;
 

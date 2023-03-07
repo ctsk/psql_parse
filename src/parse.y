@@ -225,7 +225,7 @@ namespace psql_parse {
 %type <std::optional<box<TableAlias>>>				opt_alias_clause
 %type <box<TableAlias>>						alias_clause
 
-%type <Expression>						where_clause
+%type <std::optional<Expression>>			        where_clause
 
 %type <std::optional<GroupClause>>				group_clause
 %type <std::vector<Grouping>>					group_by_list
@@ -239,7 +239,7 @@ namespace psql_parse {
 %type <box<Cube>>						cube_list
 %type <box<GroupingSets>>					grouping_sets
 
-%type <Expression>						having_clause
+%type <std::optional<Expression>>				having_clause
 
 %type <std::vector<box<Window>>>				window_clause
 %type <std::vector<box<Window>>>				window_definition_list
@@ -977,7 +977,7 @@ alias_clause:
 
 where_clause:
     WHERE value_expr 						{ $$ = $value_expr; }
- |  %empty							{ $$; }
+ |  %empty							{ $$ = std::nullopt; }
  ;
 
 group_clause:
@@ -1044,7 +1044,7 @@ grouping_sets:
 
 having_clause:
     HAVING value_expr						{ $$ = $value_expr; }
- |  %empty							{ $$; }
+ |  %empty							{ $$ = std::nullopt; }
  ;
 
 window_clause:
