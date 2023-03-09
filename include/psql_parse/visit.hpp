@@ -24,6 +24,7 @@ namespace psql_parse {
             void operator()(box<IntegerLiteral> &expr);
             void operator()(box<FloatLiteral> &expr);
             void operator()(box<StringLiteral> &expr);
+            void operator()(box<BooleanLiteral> &expr);
             void operator()(box<UnaryOp> &expr);
             void operator()(box<BinaryOp> &expr);
             void operator()(box<RowExpr> &expr);
@@ -290,6 +291,21 @@ namespace psql_parse {
         context.out << expr->value;
     }
 
+    void printer::expr_visitor::operator()(box<BooleanLiteral> &expr) {
+        using enum BooleanLiteral::Val;
+        switch (expr->value) {
+            case TRUE:
+                context.out << "TRUE";
+                break;
+            case FALSE:
+                context.out << "FALSE";
+                break;
+            case UNKNOWN:
+                context.out << "UNKNOWN";
+                break;
+        }
+    }
+
     void printer::expr_visitor::operator()(box<UnaryOp> &expr) {
         std::string op;
         switch (expr->op) {
@@ -388,21 +404,11 @@ namespace psql_parse {
     }
 
     void printer::expr_visitor::operator()(box<IsExpr> &expr) {
-        std::string tv;
-        switch (expr->truth_value) {
-            case BoolLiteral::TRUE:
-                tv = "TRUE";
-                break;
-            case BoolLiteral::FALSE:
-                tv = "FALSE";
-                break;
-            case BoolLiteral::UNKNOWN:
-                tv = "UNKNOWN";
-                break;
-        }
         context.out << "(is ";
         std::visit(*this, expr->inner);
-        context.out << " " << tv << ")";
+        context.out << " ";
+        (*this)(expr->truth_value);
+        context.out << ")";
     }
 
     void printer::expr_visitor::operator()(box<BetweenPred> &expr) {
@@ -516,6 +522,7 @@ namespace psql_parse {
         }
         context.out << ")";
     }
+
 
 
 }

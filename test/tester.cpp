@@ -176,6 +176,10 @@ TEST_CASE( "supported concepts", "[cov]") {
             "select +1",
             "select 2 * 3, 2+3, 2-3, 2/3",
             /*
+             * Boolean Literals
+             */
+            "select TRUE,FALSE,UNKNOWN from whatever",
+            /*
              * Identifiers;
              */
             "select foo",

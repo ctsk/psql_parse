@@ -10,6 +10,7 @@ namespace psql_parse {
 	struct IntegerLiteral;
 	struct FloatLiteral;
 	struct StringLiteral;
+    struct BooleanLiteral;
 	struct UnaryOp;
 	struct BinaryOp;
 	struct RowSubquery;
@@ -41,6 +42,7 @@ namespace psql_parse {
 			box<IntegerLiteral>,
 			box<FloatLiteral>,
 			box<StringLiteral>,
+            box<BooleanLiteral>,
 			box<UnaryOp>,
 			box<BinaryOp>,
 			box<AliasExpr>,
@@ -110,11 +112,20 @@ namespace psql_parse {
 		StringLiteral(std::string&& value, StringLiteralType type);
 	};
 
-	enum class BoolLiteral {
-		TRUE,
-		FALSE,
-		UNKNOWN
-	};
+    struct BooleanLiteral {
+        DEFAULT_EQ(BooleanLiteral);
+
+        enum class Val {
+            TRUE,
+            FALSE,
+            UNKNOWN
+        };
+
+        Val value;
+
+        explicit BooleanLiteral(Val value);
+    };
+
 
 	struct Var {
 		DEFAULT_EQ(Var);
@@ -137,9 +148,9 @@ namespace psql_parse {
 		DEFAULT_EQ(IsExpr);
 
 		Expression inner;
-		BoolLiteral truth_value;
+		box<BooleanLiteral> truth_value;
 
-		IsExpr(Expression inner, BoolLiteral truth_value);
+		IsExpr(Expression inner, box<BooleanLiteral> truth_value);
 	};
 
 	struct UnaryOp {

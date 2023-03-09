@@ -11,6 +11,9 @@ namespace psql_parse {
 	StringLiteral::StringLiteral(std::string &&value, StringLiteralType type)
 	: value(value), type(type) {}
 
+    BooleanLiteral::BooleanLiteral(Val value)
+    : value(value) {}
+
 	UnaryOp::UnaryOp(UnaryOp::Op op, Expression inner)
 	: op(op), inner(std::move(inner)) {}
 
@@ -48,8 +51,8 @@ namespace psql_parse {
 	Var::Var(std::string name)
 	: name(std::move(name)) {}
 
-	IsExpr::IsExpr(Expression inner, BoolLiteral truth_value)
-	: inner(std::move(inner)), truth_value(truth_value) {}
+	IsExpr::IsExpr(Expression inner, box<BooleanLiteral> truth_value)
+	: inner(std::move(inner)), truth_value(std::move(truth_value)) {}
 
 	Collate::Collate(Expression var, box<QualifiedName> collation)
 	: var(std::move(var)), collation(std::move(collation)) {}

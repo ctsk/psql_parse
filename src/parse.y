@@ -132,7 +132,8 @@ namespace psql_parse {
 %type <Expression>						numeric_literal
 %type <Expression>						signed_numeric_literal
 %type <Expression>						unsigned_numeric_literal
-%type <StringLiteral*>						general_literal
+%type <Expression>						general_literal
+%type <box<BooleanLiteral>>					boolean_literal
 %type <Expression>						literal
 %type <Expression>						unsigned_literal
 %type <Statement>						CreateStatement
@@ -184,7 +185,6 @@ namespace psql_parse {
 %type <std::vector<Expression>>					value_expr_list
 %type <Expression>						common_value_expr
 %type <Expression>						bool_value_expr
-%type <BoolLiteral>						truth_value
 %type <bool>							opt_symmetric
 %type <RelExpression>						in_expr
 %type <Expression>						bool_predicand
@@ -225,7 +225,7 @@ namespace psql_parse {
 %type <std::optional<box<TableAlias>>>				opt_alias_clause
 %type <box<TableAlias>>						alias_clause
 
-%type <std::optional<Expression>>			        where_clause
+%type <std::optional<Expression>>				where_clause
 
 %type <std::optional<GroupClause>>				group_clause
 %type <std::vector<Grouping>>					group_by_list
@@ -286,6 +286,14 @@ general_literal:
  |  BIT_VALUE		{ $$ = mkNode<StringLiteral>(@BIT_VALUE, $BIT_VALUE, StringLiteralType::BIT); }
  |  HEX_VALUE		{ $$ = mkNode<StringLiteral>(@HEX_VALUE, $HEX_VALUE, StringLiteralType::HEX); }
  |  NATIONAL_VALUE	{ $$ = mkNode<StringLiteral>(@NATIONAL_VALUE, $NATIONAL_VALUE, StringLiteralType::NATIONAL); }
+ |  boolean_literal
+ ;
+
+boolean_literal:
+    TRUE		{ $$ = mkNode<BooleanLiteral>(@$, BooleanLiteral::Val::TRUE); }
+ |  FALSE		{ $$ = mkNode<BooleanLiteral>(@$, BooleanLiteral::Val::FALSE); }
+ |  UNKNOWN		{ $$ = mkNode<BooleanLiteral>(@$, BooleanLiteral::Val::UNKNOWN); }
+ ;
 
 /* Missing: INTERVAL */
 data_type:
@@ -451,9 +459,9 @@ column_defs_and_constraints:
 		$vec.push_back($elem); $$ = $vec;
 	}
  |  column_def_and_constraint[elem]
- 	{
- 		$$ = std::vector<std::variant<ColumnDef, TableConstraint>>(); $$.push_back($elem);
- 	}
+	{
+		$$ = std::vector<std::variant<ColumnDef, TableConstraint>>(); $$.push_back($elem);
+	}
  ;
 
 column_def_and_constraint:
@@ -499,8 +507,8 @@ column_constraint_defs:
     column_constraint_def[elem] column_constraint_defs[vec]	{ $vec.push_back($elem); $$ = $vec; }
  |  column_constraint_def[elem]
 	{
-  		$$ = std::vector<NamedColumnConstraint>(); $$.push_back($elem);
-  	}
+		$$ = std::vector<NamedColumnConstraint>(); $$.push_back($elem);
+	}
  ;
 
 column_constraint_def:
@@ -525,13 +533,13 @@ column_constraint:
 
 references_spec:
     REFERENCES qualified_name[table_name] LP identifier_list RP opt_match opt_referential_triggered_action
-    	{
-    		$$ = mkNode<References>(@$,
-    			$table_name,
-    			$identifier_list,
-    			$opt_match,
-    			$opt_referential_triggered_action
-    		);
+	{
+		$$ = mkNode<References>(@$,
+			$table_name,
+			$identifier_list,
+			$opt_match,
+			$opt_referential_triggered_action
+		);
 	}
  ;
 
@@ -600,10 +608,10 @@ table_constraint_def:
 value_expr:
     bool_value_expr
  |  LP value_expr_list COMMA value_expr[last] RP
- 	{
- 		$value_expr_list.push_back($last);
- 		$$ = mkNode<RowExpr>(@$, $value_expr_list);
- 	}
+	{
+		$value_expr_list.push_back($last);
+		$$ = mkNode<RowExpr>(@$, $value_expr_list);
+	}
  |  ROW LP value_expr_list RP					{ $$ =  mkNode<RowExpr>(@$, $value_expr_list); }
  ;
 
@@ -613,34 +621,28 @@ bool_value_expr:
  |  bool_value_expr[left] AND bool_value_expr[right]		{ $$ = mkNode<BinaryOp>(@$, $left, BinaryOp::Op::AND, $right); }
  // NOT and IS accept bool_predicand as child, preventing `NOT NOT expr` / `expr IS TRUE IS FALSE`
  |  NOT bool_predicand[inner]					{ $$ = mkNode<UnaryOp>(@$, UnaryOp::Op::NOT, $inner); }
- |  bool_predicand[inner] IS truth_value			{ $$ = mkNode<IsExpr>(@$, $inner, $truth_value); }
- |  bool_predicand[inner] IS NOT truth_value %prec IS		{ $$ = mkNotNode<IsExpr>(@$, $inner, $truth_value); }
- ;
-
-truth_value:
-    TRUE							{ $$ = BoolLiteral::TRUE; }
- |  FALSE							{ $$ = BoolLiteral::FALSE; }
- |  UNKNOWN							{ $$ = BoolLiteral::UNKNOWN; }
+ |  bool_predicand[inner] IS boolean_literal			{ $$ = mkNode<IsExpr>(@$, $inner, $boolean_literal); }
+ |  bool_predicand[inner] IS NOT boolean_literal %prec IS	{ $$ = mkNotNode<IsExpr>(@$, $inner, $boolean_literal); }
  ;
 
 bool_predicand:
     common_value_expr						{ $$ = $common_value_expr; }
  |  bool_predicand[left] comp_op bool_predicand[right] %prec COMP_OP
- 	{
- 		$$ = mkNode<BinaryOp>(@$, $left, $comp_op, $right);
- 	}
+	{
+		$$ = mkNode<BinaryOp>(@$, $left, $comp_op, $right);
+	}
  |  bool_predicand[val] BETWEEN opt_symmetric bool_predicand[low] AND bool_predicand[high]	%prec BETWEEN
- 	{
- 		auto expr = mkNode<BetweenPred>(@$, $val, $low, $high);
- 		expr->symmetric = $opt_symmetric;
- 		$$ = expr;
- 	}
+	{
+		auto expr = mkNode<BetweenPred>(@$, $val, $low, $high);
+		expr->symmetric = $opt_symmetric;
+		$$ = expr;
+	}
  |  bool_predicand[val] NOT BETWEEN opt_symmetric bool_predicand[low] AND bool_predicand[high]	%prec BETWEEN
- 	{
- 		auto expr = mkNode<BetweenPred>(@$, $val, $low, $high);
- 		expr->symmetric = $opt_symmetric;
- 		$$ = mkNode<UnaryOp>(@$, UnaryOp::Op::NOT, expr);
- 	}
+	{
+		auto expr = mkNode<BetweenPred>(@$, $val, $low, $high);
+		expr->symmetric = $opt_symmetric;
+		$$ = mkNode<UnaryOp>(@$, UnaryOp::Op::NOT, expr);
+	}
  |  bool_predicand[val] IN in_expr[rel] 	%prec IN	{ $$ = mkNode<InPred>(@$, $val, $rel); }
  |  bool_predicand[val] NOT IN in_expr[rel]	%prec IN 	{ $$ = mkNotNode<InPred>(@$, $val, $rel); }
  |  bool_predicand[val] LIKE common_value_expr[pat] opt_escape	 	%prec LIKE
@@ -736,23 +738,23 @@ select_no_parens:
     		$$ = mkNode<Query>(@$, $simple_select);
     	}
  |  select_clause order_by_clause opt_offset_clause opt_fetch_first_clause
- 	{
- 		$$ = mkNode<Query>(@$, $select_clause);
- 		$$->order = $order_by_clause;
- 		$$->offset = $opt_offset_clause;
- 		$$->fetch = $opt_fetch_first_clause;
- 	}
+	{
+		$$ = mkNode<Query>(@$, $select_clause);
+		$$->order = $order_by_clause;
+		$$->offset = $opt_offset_clause;
+		$$->fetch = $opt_fetch_first_clause;
+	}
  |  select_clause offset_clause opt_fetch_first_clause
- 	{
- 		$$ = mkNode<Query>(@$, $select_clause);
- 		$$->offset = $offset_clause;
- 		$$->fetch = $opt_fetch_first_clause;
- 	}
+	{
+		$$ = mkNode<Query>(@$, $select_clause);
+		$$->offset = $offset_clause;
+		$$->fetch = $opt_fetch_first_clause;
+	}
  |  select_clause fetch_first_clause
- 	{
- 		$$ = mkNode<Query>(@$, $select_clause);
- 		$$->fetch = $fetch_first_clause;
- 	}
+	{
+		$$ = mkNode<Query>(@$, $select_clause);
+		$$->fetch = $fetch_first_clause;
+	}
  ;
 
 select_clause: simple_select | select_with_parens ;
@@ -842,8 +844,8 @@ opt_row_or_rows: ROW | ROWS | %empty;
 
 simple_select:
     SELECT opt_set_quantifier target_list from_clause where_clause group_clause having_clause window_clause
- 	{
- 		auto expr = mkNode<SelectExpr>(@$);
+	{
+		auto expr = mkNode<SelectExpr>(@$);
 		expr->target_list = $target_list;
 		expr->from_clause = $from_clause;
 		expr->where_clause = $where_clause;
@@ -936,15 +938,15 @@ joined_table:
 		$$->setQualifier($join_qual);
 	}
  |  table_ref[a] join_type JOIN table_ref[b] USING LP identifier_list[names] RP
- 	{
- 		$$ = mkNode<JoinExpr>(@$, $a, $join_type, $b);
- 		$$->columns = $names;
- 	}
+	{
+		$$ = mkNode<JoinExpr>(@$, $a, $join_type, $b);
+		$$->columns = $names;
+	}
  |  table_ref[a] JOIN table_ref[b] ON value_expr[join_qual]
- 	{
- 		$$ = mkNode<JoinExpr>(@$, $a, JoinExpr::Kind::INNER, $b);
- 		$$->setQualifier($join_qual);
- 	}
+	{
+		$$ = mkNode<JoinExpr>(@$, $a, JoinExpr::Kind::INNER, $b);
+		$$->setQualifier($join_qual);
+	}
  |  table_ref[a] JOIN table_ref[b] USING LP identifier_list[names] RP
 	{
 		$$ = mkNode<JoinExpr>(@$, $a, JoinExpr::Kind::INNER, $b);
@@ -1025,10 +1027,10 @@ ordinary_grouping_set_list:
 		$$.emplace_back($elem);
 	}
  |  ordinary_grouping_set_list[list] COMMA ordinary_grouping_set[elem]
- 	{
- 		$list.emplace_back($elem);
- 		$$ = $list;
- 	}
+	{
+		$list.emplace_back($elem);
+		$$ = $list;
+	}
 
 rollup_list:
     ROLLUP LP ordinary_grouping_set_list[ogsl] RP		{ $$ = mkNode<Rollup>(@$); $$->sets = $ogsl; }
