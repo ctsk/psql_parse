@@ -21,6 +21,7 @@ namespace psql_parse {
         struct expr_visitor {
             printer& context;
             void operator()(box<AliasExpr> &expr);
+            void operator()(box<Asterisk> &expr);
             void operator()(box<IntegerLiteral> &expr);
             void operator()(box<FloatLiteral> &expr);
             void operator()(box<StringLiteral> &expr);
@@ -42,6 +43,7 @@ namespace psql_parse {
             void operator()(box<GroupingSets> &expr);
             void operator()(box<Rollup> &expr);
             void operator()(box<Cube> &expr);
+            void operator()(box<AggregateExpr> &expr);
         };
 
         rel_expr_visitor rev;
@@ -523,6 +525,77 @@ namespace psql_parse {
         context.out << ")";
     }
 
+    void printer::expr_visitor::operator()(box<Asterisk> &expr) {
+        context.out << "*";
+    }
 
-
+    void printer::expr_visitor::operator()(box<AggregateExpr> &expr) {
+        context.out << "(aggregate ";
+        using
+        enum AggregateExpr::Op;
+        switch (expr->op) {
+            case AVG:
+                context.out << "avg";
+                break;
+            case MAX:
+                context.out << "max";
+                break;
+            case MIN:
+                context.out << "min";
+                break;
+            case SUM:
+                context.out << "sum";
+                break;
+            case EVERY:
+                context.out << "every";
+                break;
+            case ANY:
+                context.out << "any";
+                break;
+            case SOME:
+                context.out << "some";
+                break;
+            case COUNT:
+                context.out << "count";
+                break;
+            case STDDEV_POP:
+                context.out << "stddev_pop";
+                break;
+            case STDDEV_SAMP:
+                context.out << "stddev_samp";
+                break;
+            case VAR_POP:
+                context.out << "var_pop";
+                break;
+            case VAR_SAMP:
+                context.out << "var_samp";
+                break;
+            case COLLECT:
+                context.out << "collect";
+                break;
+            case FUSION:
+                context.out << "fusion";
+                break;
+            case INTERSECTION:
+                context.out << "intersection";
+                break;
+        }
+        context.out << " ";
+        if (expr->quantifier.has_value()) {
+            switch (expr->quantifier.value()) {
+                case SetQuantifier::DISTINCT:
+                    context.out << "distinct ";
+                    break;
+                case SetQuantifier::ALL:
+                    context.out << "all ";
+                    break;
+            }
+        }
+        std::visit(*this, expr->argument);
+        if (expr->filter.has_value()) {
+            context.out << " ";
+            std::visit(*this, expr->filter.value());
+        }
+        context.out << ")";
+    }
 }

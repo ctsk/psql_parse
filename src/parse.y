@@ -95,21 +95,21 @@ namespace psql_parse {
 %token 			QUOTE		"'"
 %token 			CONCAT		"||"
 
-%token 	ACTION ALL AND ARRAY ASYMMETRIC ASC AS BETWEEN BIGINT BINARY BIT BLOB BOOLEAN
-	BY CASCADE CHARACTERS CHARACTER CLOB COLLATE COMMIT CONSTRAINT
+%token 	ACTION ALL AND ANY ARRAY ASYMMETRIC ASC AS AVG BETWEEN BIGINT BINARY BIT BLOB BOOLEAN
+	BY CASCADE CHARACTERS CHARACTER CLOB COLLATE COLLECT COMMIT CONSTRAINT COUNT
 	CREATE CROSS CUBE CURRENT_USER CURRENT DATE
 	DECIMAL DEFAULT DELETE DESC DISTINCT DOUBLE
-	ESCAPE EXCEPT EXCLUDE EXISTS FALSE FETCH FIRST FLOAT FOLLOWING
-	FOREIGN FROM FULL GLOBAL GROUPING GROUPS GROUP
-	HAVING INNER INTEGER INTERSECT IN IS JOIN KEY LARGE LAST
-	LEFT LIKE LOCAL MATCH MULTISET NATIONAL NATURAL NCHAR NCLOB NEXT NOT NO
+	ESCAPE EVERY EXCEPT EXCLUDE EXISTS FALSE FETCH FILTER FIRST FLOAT FOLLOWING
+	FOREIGN FROM FULL FUSION GLOBAL GROUPING GROUPS GROUP
+	HAVING INNER INTEGER INTERSECTION INTERSECT IN IS JOIN KEY LARGE LAST
+	LEFT LIKE LOCAL MATCH MAX MIN MULTISET NATIONAL NATURAL NCHAR NCLOB NEXT NOT NO
 	NULLS NULL NUMERIC OBJECT OCTETS OFFSET ONLY ON ORDER OR OTHERS OUTER PARTIAL
 	PARTITION PERCENT PRECEDING PRECISION PRESERVE PRIMARY
 	RANGE REAL REFERENCES REF RIGHT ROLLUP ROWS ROW SCOPE
-	SESSION_USER SETS SET SMALLINT SELECT SYMMETRIC
+	SESSION_USER SETS SET SELECT SMALLINT SOME STDDEV_POP STDDEV_SAMP SUM SYMMETRIC
 	SYSTEM_USER TABLE TEMPORARY TIES TIMESTAMP TIME
 	TRUE UNBOUNDED UNION UNIQUE UNKNOWN UPDATE USER
-	USING VALUES VARBINARY VARCHAR VARYING WHERE WINDOW WITHOUT WITH ZONE
+	USING VALUES VARBINARY VARCHAR VARYING VAR_POP VAR_SAMP WHERE WINDOW WITHOUT WITH ZONE
 
 %left UNION EXCEPT
 %left INTERSECT
@@ -191,6 +191,10 @@ namespace psql_parse {
 %type <BinaryOp::Op>						comp_op
 %type <Expression>						value_expr_no_parens
 %type <std::optional<Expression>>				opt_escape
+%type <box<AggregateExpr>>					aggregate_expr
+%type <Expression>						value_expr_or_asterisk
+%type <AggregateExpr::Op>					aggregate_op
+%type <std::optional<Expression>>				opt_aggregate_filter
 
 %type <Statement>						SelectStatement
 %type <box<Query>>						select_no_parens
@@ -697,6 +701,7 @@ common_value_expr:
  |  common_value_expr[left] STAR common_value_expr[right]	{ $$ = mkNode<BinaryOp>(@$, $left, BinaryOp::Op::DIV, $right); }
  |  PLUS common_value_expr[inner]				{ $$ = $inner; }
  |  MINUS common_value_expr[inner]				{ $$ = mkNode<UnaryOp>(@$, UnaryOp::Op::NEG, $inner); }
+ |  aggregate_expr
  ;
 
 comp_op:
@@ -711,6 +716,50 @@ comp_op:
 value_expr_no_parens:
     unsigned_literal						{ $$ = $unsigned_literal; }
  |  IDENTIFIER							{ $$ = mkNode<Var>(@$, $IDENTIFIER); }
+ ;
+
+/*
+ *  MISSING:
+ *
+ *  <binary set function>
+ *  <ordered set function>
+ *  <array aggregate function>
+ */
+aggregate_expr:
+    aggregate_op LP opt_set_quantifier value_expr_or_asterisk RP opt_aggregate_filter
+	{
+		$$ = mkNode<AggregateExpr>(@$, $aggregate_op, $value_expr_or_asterisk);
+		$$->filter = $opt_aggregate_filter;
+		$$->quantifier = $opt_set_quantifier;
+	}
+ ;
+
+value_expr_or_asterisk:
+    value_expr							{ $$ = $value_expr; }
+ |  STAR							{ $$ = mkNode<Asterisk>(@$); }
+ ;
+
+aggregate_op:
+    AVG								{ $$ = AggregateExpr::Op::AVG; }
+ |  MAX								{ $$ = AggregateExpr::Op::MAX; }
+ |  MIN								{ $$ = AggregateExpr::Op::MIN; }
+ |  SUM								{ $$ = AggregateExpr::Op::SUM; }
+ |  EVERY							{ $$ = AggregateExpr::Op::EVERY; }
+ |  ANY								{ $$ = AggregateExpr::Op::ANY; }
+ |  SOME							{ $$ = AggregateExpr::Op::SOME; }
+ |  COUNT							{ $$ = AggregateExpr::Op::COUNT; }
+ |  STDDEV_POP							{ $$ = AggregateExpr::Op::STDDEV_POP; }
+ |  STDDEV_SAMP							{ $$ = AggregateExpr::Op::STDDEV_SAMP; }
+ |  VAR_SAMP							{ $$ = AggregateExpr::Op::VAR_SAMP; }
+ |  VAR_POP							{ $$ = AggregateExpr::Op::VAR_POP; }
+ |  COLLECT							{ $$ = AggregateExpr::Op::COLLECT; }
+ |  FUSION							{ $$ = AggregateExpr::Op::FUSION; }
+ |  INTERSECTION						{ $$ = AggregateExpr::Op::INTERSECTION; }
+ ;
+
+opt_aggregate_filter:
+    FILTER LP WHERE bool_value_expr RP				{ $$ = $bool_value_expr; }
+ |  %empty							{ $$ = std::nullopt; }
  ;
 
 /************
@@ -902,7 +951,7 @@ target_list:
 target_element:
     value_expr
  |  value_expr AS IDENTIFIER[name]				{ $$ = mkNode<AliasExpr>(@$, $name, $value_expr); }
- |  STAR  							{ $$; }
+ |  STAR  							{ $$ = mkNode<Asterisk>(@$); }
  ;
 
 from_clause:

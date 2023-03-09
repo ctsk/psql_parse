@@ -92,4 +92,7 @@ namespace psql_parse {
 	GroupingSets::GroupingSets() = default;
 	Rollup::Rollup() = default;
 	Cube::Cube() = default;
+
+    AggregateExpr::AggregateExpr(Op op, Expression argument)
+    : op(op), argument(std::move(argument)) {}
 }

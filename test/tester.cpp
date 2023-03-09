@@ -166,7 +166,7 @@ TEST_CASE( "supported concepts", "[cov]") {
     psql_parse::driver driver;
     auto parser = std::bind_front(mustParse, std::ref(driver));
 
-    auto concepts = {
+    const char * concepts[] = {
             /*
              * Numbers & Arithmetic
              */
@@ -344,13 +344,34 @@ TEST_CASE( "supported concepts", "[cov]") {
             /*
              * Boolean logic
              */
-
             "select foo from bar where a AND b",
             "select foo from bar where a OR b",
             "select foo from bar where a IS TRUE",
             "select foo from bar where a IS NOT FALSE",
             "select foo from bar where a IS UNKNOWN",
             "select foo from bar where NOT (a OR b)",
+
+            /*
+             * Aggregations
+             */
+            "select count(*) from bar",
+            "select count(*) filter (where false)",
+            "select sum(distinct foo) from bar",
+            "select avg(foo) from bar",
+            "select max(foo) from bar",
+            "select min(foo) from bar",
+            "select every(foo) from bar",
+            "select any(foo) from bar",
+            "select some(foo) from bar",
+            "select count(foo) from bar",
+            "select count(all foo) from bar",
+            "select stddev_pop(foo) from bar",
+            "select stddev_samp(foo) from bar",
+            "select var_pop(foo) from bar",
+            "select var_samp(foo) from bar",
+            "select collect(foo) from bar",
+            "select fusion(foo) from bar",
+            "select intersection(foo) from bar"
     };
 
     for (auto const &c : concepts) {

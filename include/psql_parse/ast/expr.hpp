@@ -7,6 +7,7 @@
 namespace psql_parse {
 
 	struct AliasExpr;
+    struct Asterisk;
 	struct IntegerLiteral;
 	struct FloatLiteral;
 	struct StringLiteral;
@@ -24,11 +25,13 @@ namespace psql_parse {
 	struct UniquePred;
 	struct SortSpec;
 	struct RowExpr;
+    struct AggregateExpr;
 
 	struct GroupingSet;
 	struct GroupingSets;
 	struct Rollup;
 	struct Cube;
+
 
 	struct JoinExpr;
 	struct TableName;
@@ -39,6 +42,7 @@ namespace psql_parse {
 	struct Query;
 
 	using Expression = std::variant<
+            box<Asterisk>,
 			box<IntegerLiteral>,
 			box<FloatLiteral>,
 			box<StringLiteral>,
@@ -60,7 +64,8 @@ namespace psql_parse {
 			box<GroupingSet>,
 			box<GroupingSets>,
 			box<Rollup>,
-			box<Cube>>;
+			box<Cube>,
+            box<AggregateExpr>>;
 
 	using Grouping = std::variant<
 			box<GroupingSet>,
@@ -86,6 +91,10 @@ namespace psql_parse {
 
 		AliasExpr(std::string name, Expression expr);
 	};
+
+    struct Asterisk {
+        DEFAULT_EQ(Asterisk);
+    };
 
     struct IntegerLiteral {
 		DEFAULT_EQ(IntegerLiteral);
@@ -317,9 +326,6 @@ namespace psql_parse {
 	struct SelectExpr {
 		DEFAULT_EQ(SelectExpr);
 
-		/*
- 		 * NOTE: nullptr = ASTERISK
- 		*/
 		std::vector<Expression> target_list;
 		std::vector<RelExpression> from_clause;
 		std::optional<Expression> where_clause;
@@ -477,4 +483,25 @@ namespace psql_parse {
 
 		UniquePred(box<Query> subquery);
 	};
+
+    struct AggregateExpr {
+        DEFAULT_EQ(AggregateExpr);
+
+        enum class Op {
+            AVG, MAX, MIN, SUM, COUNT,
+            EVERY, ANY, SOME, STDDEV_POP, STDDEV_SAMP,
+            VAR_POP, VAR_SAMP,
+            COLLECT, FUSION, INTERSECTION
+        };
+
+        // Semantic check required:
+        // Only COUNT may use ASTERISK
+        // when ASTERISK is used: Quantifier is meaningless
+        Op op;
+        Expression argument;
+        std::optional<SetQuantifier> quantifier;
+        std::optional<Expression> filter;
+
+        AggregateExpr(Op op, Expression argument);
+    };
 }
