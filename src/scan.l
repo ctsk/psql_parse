@@ -180,6 +180,7 @@ integer         { return psql_parse::parser::make_INTEGER(loc); }
 intersect       { return psql_parse::parser::make_INTERSECT(loc); }
 int             { return psql_parse::parser::make_INTEGER(loc); }
 in              { return psql_parse::parser::make_IN(loc); }
+is              { return psql_parse::parser::make_IS(loc); }
 join            { return psql_parse::parser::make_JOIN(loc); }
 key             { return psql_parse::parser::make_KEY(loc); }
 large           { return psql_parse::parser::make_LARGE(loc); }
@@ -205,7 +206,7 @@ offset          { return psql_parse::parser::make_OFFSET(loc); }
 only            { return psql_parse::parser::make_ONLY(loc); }
 on              { return psql_parse::parser::make_ON(loc); }
 order           { return psql_parse::parser::make_ORDER(loc); }
-or              { return psql_parse::parser::make_ON(loc); }
+or              { return psql_parse::parser::make_OR(loc); }
 others          { return psql_parse::parser::make_OTHERS(loc); }
 outer           { return psql_parse::parser::make_OUTER(loc); }
 partial         { return psql_parse::parser::make_PARTIAL(loc); }

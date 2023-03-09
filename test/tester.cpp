@@ -168,12 +168,13 @@ TEST_CASE( "supported concepts", "[cov]") {
 
     auto concepts = {
             /*
-             * Numbers
+             * Numbers & Arithmetic
              */
             "select 1",
             "select 1.0",
             "select -1",
-            "select 2 * 3",
+            "select +1",
+            "select 2 * 3, 2+3, 2-3, 2/3",
             /*
              * Identifiers;
              */
@@ -185,6 +186,13 @@ TEST_CASE( "supported concepts", "[cov]") {
              * Strings
              */
             "select 'blob'",
+            R"(select "a" || "b")",
+            "select \"a\" COLLATE coll",
+            /*
+             * Row expression
+             */
+            "select * from boo where (ROW (1,2,3)) = ((1,2,3))", // todo: check standard conformance
+            "select (1,2,3),4 from boo",
             /*
              * Multiple select targets
              */
@@ -235,6 +243,14 @@ TEST_CASE( "supported concepts", "[cov]") {
              */
             "select foo from bar, (select 1, 2, 3), baz",
             /*
+             * Values
+             */
+            "VALUES (1,2,3)",
+            /*
+             * Explicit table ref
+             */
+            "TABLE foo.bar",
+            /*
              * Table Alias
              */
             "select foo from (bar NATURAL JOIN bar) as baz",
@@ -247,6 +263,11 @@ TEST_CASE( "supported concepts", "[cov]") {
              */
             "select 1 where 2",
             "select foo from bar where baz = boo",
+            "select foo from bar where baz <> boo",
+            "select foo from bar where baz >= boo",
+            "select foo from bar where baz > boo",
+            "select foo from bar where baz <= boo",
+            "select foo from bar where baz < boo",
             /*
              * Group By
              */
@@ -290,6 +311,7 @@ TEST_CASE( "supported concepts", "[cov]") {
             /*
              * Fetch
              */
+            "select foo OFFSET 1 ROW FETCH FIRST ROW WITH TIES",
             "select foo FETCH FIRST 3 ROWS ONLY",
             "select foo FETCH FIRST ROW WITH TIES",
             "select foo FETCH NEXT 1 ROW WITH TIES",
@@ -302,12 +324,35 @@ TEST_CASE( "supported concepts", "[cov]") {
              * Unique predicate on a subquery
              */
             "select foo from bar where unique (select 1)",
+            /*
+             * More predicates
+             */
+            "select foo from bar where baz BETWEEN 1 AND 2",
+            "select foo from bar where baz NOT BETWEEN SYMMETRIC 1 AND 2",
+            "select foo from bar where baz BETWEEN ASYMMETRIC 1 AND 2",
 
+            "select foo from bar where 1 IN (select 1)",
+            "select foo from bar where 1 NOT IN (1,2,3)",
+
+            "select foo from bar where baz LIKE \"woohoo%\"",
+            R"(select foo from bar where baz NOT LIKE "hello world" ESCAPE "a")",
+
+            /*
+             * Boolean logic
+             */
+
+            "select foo from bar where a AND b",
+            "select foo from bar where a OR b",
+            "select foo from bar where a IS TRUE",
+            "select foo from bar where a IS NOT FALSE",
+            "select foo from bar where a IS UNKNOWN",
+            "select foo from bar where NOT (a OR b)",
     };
 
     for (auto const &c : concepts) {
         parser(c);
     }
+
 }
 
 TEST_CASE( "visit tests" ) {
