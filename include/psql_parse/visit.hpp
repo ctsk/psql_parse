@@ -46,11 +46,18 @@ namespace psql_parse {
             void operator()(box<AggregateExpr> &expr);
         };
 
+        struct stmt_visitor {
+            printer& context;
+            void operator()(box<CreateStatement> &stmt);
+            void operator()(box<SelectStatement> &stmt);
+        };
+
         rel_expr_visitor rev;
         expr_visitor ev;
+        stmt_visitor sv;
 
         printer(std::ostream &out)
-        : out(out), rev {*this}, ev {*this} {};
+        : out(out), rev {*this}, ev {*this}, sv{*this} {};
 
         void print(Expression& expr) {
             std::visit(ev, expr);
@@ -59,7 +66,20 @@ namespace psql_parse {
         void print(RelExpression& expr) {
             std::visit(rev, expr);
         }
+
+        void print(Statement& stmt) {
+            std::visit(sv, stmt);
+        }
     };
+
+    void printer::stmt_visitor::operator()(box<CreateStatement> &stmt) {
+        context.out << "CREATE: ";
+    }
+
+    void printer::stmt_visitor::operator()(box<SelectStatement> &stmt) {
+        context.out << "SELECT: ";
+        context.rev(stmt->rel_expr);
+    }
 
     void printer::rel_expr_visitor::operator()(box<JoinExpr> &expr) {
         std::string kind;
@@ -187,6 +207,8 @@ namespace psql_parse {
             std::visit(context.ev, expr->having_clause.value());
             context.out << ")";
         }
+
+        context.out << ")";
 
         // todo: handle window
     }

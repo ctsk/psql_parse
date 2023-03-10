@@ -91,6 +91,14 @@ set(SOURCES
 
 add_library(psql_parse ${SOURCES})
 
+#[==========[
+# Executable
+#]==========]
+
+
+add_executable(sqlcheck "${CMAKE_SOURCE_DIR}/bin/sqlcheck.cpp")
+target_link_libraries(sqlcheck PRIVATE psql_parse)
+
 #[=======[
 # Testing
 #]=======]

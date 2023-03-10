@@ -697,8 +697,8 @@ common_value_expr:
  |  common_value_expr[left] COLLATE qualified_name[coll]	{ $$ = mkNode<Collate>(@$, $left, $coll); }
  |  common_value_expr[left] MINUS common_value_expr[right]	{ $$ = mkNode<BinaryOp>(@$, $left, BinaryOp::Op::SUB, $right); }
  |  common_value_expr[left] PLUS common_value_expr[right]	{ $$ = mkNode<BinaryOp>(@$, $left, BinaryOp::Op::ADD, $right); }
- |  common_value_expr[left] SLASH common_value_expr[right]	{ $$ = mkNode<BinaryOp>(@$, $left, BinaryOp::Op::MULT, $right); }
- |  common_value_expr[left] STAR common_value_expr[right]	{ $$ = mkNode<BinaryOp>(@$, $left, BinaryOp::Op::DIV, $right); }
+ |  common_value_expr[left] SLASH common_value_expr[right]	{ $$ = mkNode<BinaryOp>(@$, $left, BinaryOp::Op::DIV, $right); }
+ |  common_value_expr[left] STAR common_value_expr[right]	{ $$ = mkNode<BinaryOp>(@$, $left, BinaryOp::Op::MULT, $right); }
  |  PLUS common_value_expr[inner]				{ $$ = $inner; }
  |  MINUS common_value_expr[inner]				{ $$ = mkNode<UnaryOp>(@$, UnaryOp::Op::NEG, $inner); }
  |  aggregate_expr
