@@ -11,6 +11,7 @@ bool psql_parse::driver::parse(std::istream &in) {
     if (scanner_ == nullptr) {
         scanner_ = std::make_unique<scanner>(&in);
     } else {
+        scanner_->reset();
         scanner_->switch_streams(in, scanner_err_);
     }
     scanner_->set_debug(trace_scanning_);

@@ -31,6 +31,8 @@ namespace psql_parse {
         explicit scanner(std::istream *in = nullptr, std::ostream *out = nullptr);
 
         virtual psql_parse::parser::symbol_type lex();
+
+        void reset();
     };
 
 }

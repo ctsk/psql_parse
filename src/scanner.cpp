@@ -12,4 +12,10 @@ namespace psql_parse {
 	void scanner::start_ident() {
 		ident_buffer.clear();
 	}
+
+    void scanner::reset() {
+        loc = location();
+        string_buffer.clear();
+        ident_buffer.clear();
+    }
 }
