@@ -5,6 +5,7 @@
 #include "ast/expr.hpp"
 
 namespace psql_parse {
+
     struct printer {
         std::ostream& out;
         struct rel_expr_visitor {
@@ -70,10 +71,50 @@ namespace psql_parse {
         void print(Statement& stmt) {
             std::visit(sv, stmt);
         }
+
+        void print(SetQuantifier q) {
+            switch (q) {
+                case SetQuantifier::DISTINCT:
+                    out << "DISTINCT";
+                case SetQuantifier::ALL:
+                    out << "ALL";
+            }
+        }
+
+        void print(JoinExpr::Kind q) {
+            switch (q) {
+                case JoinExpr::Kind::FULL:
+                    out <<  "FULL OUTER";
+                case JoinExpr::Kind::LEFT:
+                    out <<  "LEFT OUTER";
+                case JoinExpr::Kind::RIGHT:
+                    out <<  "RIGHT OUTER";
+                case JoinExpr::Kind::INNER:
+                    out <<  "INNER";
+            }
+        }
+
+        void print(QualifiedName& q) {
+            for (const auto& part : q.qualifier) {
+                out << part << ".";
+            }
+            out << q.name;
+        }
+
+        void print(BooleanLiteral::Val v) {
+            switch (v) {
+                case BooleanLiteral::Val::TRUE:
+                    out << "TRUE";
+                case BooleanLiteral::Val::FALSE:
+                    out << "FALSE";
+                case BooleanLiteral::Val::UNKNOWN:
+                    out << "UNKNOWN";
+            }
+        }
     };
 
     void printer::stmt_visitor::operator()(box<CreateStatement> &stmt) {
-        context.out << "CREATE: ";
+        context.out << "CREATE\n";
     }
 
     void printer::stmt_visitor::operator()(box<SelectStatement> &stmt) {
@@ -82,30 +123,24 @@ namespace psql_parse {
     }
 
     void printer::rel_expr_visitor::operator()(box<JoinExpr> &expr) {
-        std::string kind;
-        switch (expr->kind) {
-            case JoinExpr::Kind::FULL:
-                kind = "FULL OUTER";
-                break;
-            case JoinExpr::Kind::LEFT:
-                kind = "LEFT OUTER";
-                break;
-            case JoinExpr::Kind::RIGHT:
-                kind = "RIGHT OUTER";
-                break;
-            case JoinExpr::Kind::INNER:
-                kind = "INNER";
-                break;
-        }
+        context.out << "(";
 
-        context.out << "(join " << "[" << kind << "]";
+        std::visit(*this, expr->first);
+
+        context.out << " ";
+        context.print(expr->kind);
         if (expr->natural) {
-            context.out << " NATURAL ";
+            context.out << " NATURAL";
         }
+        context.out << " JOIN ";
 
-        std::visit(context.ev, expr->qualifier);
-        if (!expr->columns.empty()) {
-            context.out << " (";
+        std::visit(*this, expr->second);
+
+        if (expr->qualifier.has_value()) {
+            context.out << " ON ";
+            std::visit(context.ev, expr->qualifier.value());
+        } else if (!expr->columns.empty()) {
+            context.out << " USING (";
             context.out << expr->columns.at(0);
             for (unsigned i = 1; i < expr->columns.size(); i++) {
                 context.out << ", " << expr->columns.at(i);
@@ -113,22 +148,17 @@ namespace psql_parse {
             context.out << ")";
         }
 
-        std::visit(*this, expr->first);
-        context.out << " ";
-        std::visit(*this, expr->second);
+        context.out << ")";
     }
 
     void printer::rel_expr_visitor::operator()(box<TableName> &expr) {
-        for (auto &i : expr->name->qualifier) {
-            context.out << i << ".";
-        }
-        context.out << expr->name->name;
+        context.print(*(expr->name));
     }
 
     void printer::rel_expr_visitor::operator()(box<TableAlias> &expr) {
-        context.out << "(as ";
+        context.out << "(";
         std::visit(*this, expr->expression);
-        context.out << " " << expr->name;
+        context.out << " AS " << expr->name;
         if (!expr->columns.empty()) {
             context.out << "(" << expr->columns.at(0);
             for (unsigned i = 1; i < expr->columns.size(); i++) {
@@ -140,7 +170,7 @@ namespace psql_parse {
     }
 
     void printer::rel_expr_visitor::operator()(box<SelectExpr> &expr) {
-        context.out << "(select";
+        context.out << "(SELECT";
 
         if (expr->set_quantifier.has_value()) {
             switch (expr->set_quantifier.value()) {
@@ -154,58 +184,47 @@ namespace psql_parse {
         }
 
         if (!expr->target_list.empty()) {
-            context.out << " (";
             std::visit(context.ev, expr->target_list.at(0));
             for (unsigned i = 1; i < expr->target_list.size(); i++) {
-                context.out << " ";
+                context.out << ", ";
                 std::visit(context.ev, expr->target_list.at(i));
             }
-            context.out << ")";
         }
 
         if (!expr->from_clause.empty()) {
-            context.out << " (";
+            context.out << " FROM ";
             std::visit(*this, expr->from_clause.at(0));
             for (unsigned i = 1; i < expr->from_clause.size(); i++) {
-                context.out << " ";
+                context.out << ", ";
                 std::visit(*this, expr->from_clause.at(i));
             }
-            context.out << ")";
         }
 
+
         if (expr->where_clause.has_value()) {
-            context.out << " (where ";
+            context.out << " WHERE ";
             std::visit(context.ev, expr->where_clause.value());
-            context.out << ")";
         }
 
         if (expr->group_clause.has_value()) {
-            context.out << " (group";
+            context.out << " GROUP BY ";
             if (expr->group_clause->group_quantifier.has_value()) {
-                switch (expr->group_clause->group_quantifier.value()) {
-                    case SetQuantifier::ALL:
-                        context.out << " ALL";
-                        break;
-                    case SetQuantifier::DISTINCT:
-                        context.out << " DISTINCT";
-                        break;
-                }
+                context.print(expr->group_clause->group_quantifier.value());
             }
 
             if (!expr->group_clause->group_clause.empty()) {
+                context.out << " ";
                 std::visit(context.ev, expr->group_clause->group_clause.at(0));
                 for (unsigned i = 1; i < expr->group_clause->group_clause.size(); i++) {
-                    context.out << " ";
+                    context.out << ", ";
                     std::visit(context.ev, expr->group_clause->group_clause.at(i));
                 }
-                context.out << ")";
             }
         }
 
         if (expr->having_clause.has_value()) {
-            context.out << " (having ";
+            context.out << " HAVING ";
             std::visit(context.ev, expr->having_clause.value());
-            context.out << ")";
         }
 
         context.out << ")";
@@ -215,11 +234,11 @@ namespace psql_parse {
 
     // Print a value expression
     void printer::rel_expr_visitor::operator()(box<ValuesExpr> &expr) {
-        context.out << "(values ";
+        context.out << "(VALUES ";
         if (!expr->rows.empty()) {
             std::visit(context.ev, expr->rows.at(0));
             for (unsigned i = 1; i < expr->rows.size(); i++) {
-                context.out << " ";
+                context.out << ", ";
                 std::visit(context.ev, expr->rows.at(i));
             }
         }
@@ -227,53 +246,54 @@ namespace psql_parse {
     }
 
     void printer::rel_expr_visitor::operator()(box<SetOp> &expr) {
-        std::string op;
+        context.out << "(";
+        std::visit(*this, expr->left);
+
         switch(expr->op) {
             case SetOp::Op::UNION:
-                op = "UNION";
+                context.out << " UNION";
                 break;
             case SetOp::Op::INTERSECT:
-                op = "INTERSECT";
+                context.out << " INTERSECT";
                 break;
             case SetOp::Op::EXCEPT:
-                op = "EXCEPT";
+                context.out << " EXCEPT";
                 break;
         }
+
         if (expr->quantifier.has_value()) {
-            switch (expr->quantifier.value()) {
-                case SetQuantifier::ALL:
-                    op += " ALL";
-                    break;
-                case SetQuantifier::DISTINCT:
-                    op += " DISTINCT";
-                    break;
-            }
+            context.out << " ";
+            context.print(expr->quantifier.value());
+            context.out << " ";
         }
 
-        context.out << "(" << op << " ";
-        std::visit(*this, expr->left);
-        context.out << " ";
         std::visit(*this, expr->right);
+
         context.out << ")";
     }
 
     void printer::rel_expr_visitor::operator()(box<Query> &expr) {
-        context.out << "(query ";
+        context.out << "( ";
+
         std::visit(*this, expr->expr);
+
         if (!expr->order.empty()) {
-            context.out << " (";
-            for (auto &a : expr->order) {
-                context.ev(a);
+            context.out << " ORDER BY ";
+            context.ev(expr->order.at(0));
+            for (int i = 1; i < expr->order.size(); i++) {
+                context.out << ", ";
+                context.ev(expr->order.at(i));
             }
-            context.out << ")";
+            context.out << "";
         }
+
         if (expr->offset.has_value()) {
-            context.out << " (offset ";
+            context.out << " OFFSET ";
             context.ev(expr->offset.value());
-            context.out << ")";
         }
+
         if (expr->fetch.has_value()) {
-            context.out << " (fetch ";
+            context.out << " FETCH ";
             auto &fetch = expr->fetch.value();
             switch(fetch.kind) {
                 case Fetch::Kind::FIRST:
@@ -283,24 +303,32 @@ namespace psql_parse {
                     context.out << "NEXT ";
                     break;
             }
-            if (fetch.with_ties) {
-                context.out << "WITH TIES ";
-            }
-            if (fetch.percent) {
-                context.out << "PERCENT ";
-            }
+
             if (fetch.value.has_value()) {
                 context.ev(fetch.value.value());
+
+                if (fetch.percent) {
+                    context.out << " PERCENT ";
+                }
             }
-            context.out << ")";
+
+            context.out << " ROWS ";
+
+            if (fetch.with_ties) {
+                context.out << " WITH TIES ";
+            } else {
+                context.out << " ONLY ";
+            }
+
         }
 
+        context.out << ")";
     }
 
     void printer::expr_visitor::operator()(box<AliasExpr> &expr) {
-        context.out << "(" << "AS" << " " << expr->name << " ";
+        context.out << "(";
         std::visit(*this, expr->expr);
-        context.out << ")";
+        context.out << " AS " << expr->name << " )";
     }
 
     void printer::expr_visitor::operator()(box<IntegerLiteral> &expr) {
@@ -316,33 +344,22 @@ namespace psql_parse {
     }
 
     void printer::expr_visitor::operator()(box<BooleanLiteral> &expr) {
-        using enum BooleanLiteral::Val;
-        switch (expr->value) {
-            case TRUE:
-                context.out << "TRUE";
-                break;
-            case FALSE:
-                context.out << "FALSE";
-                break;
-            case UNKNOWN:
-                context.out << "UNKNOWN";
-                break;
-        }
+        context.print(expr->value);
     }
 
     void printer::expr_visitor::operator()(box<UnaryOp> &expr) {
-        std::string op;
+        context.out << "(";
         switch (expr->op) {
-
             case UnaryOp::Op::NOT:
-                op = "NOT";
+                context.out << "NOT ";
                 break;
             case UnaryOp::Op::NEG:
-                op = "-";
+                context.out << "- ";
                 break;
         }
-        context.out << "(" << op;
+
         std::visit(*this, expr->inner);
+
         context.out << ")";
     }
 
@@ -389,23 +406,29 @@ namespace psql_parse {
                 op = "||";
                 break;
         }
-        context.out << "(" << op << " ";
+        context.out << "(";
         std::visit(*this, expr->left);
-        context.out << " ";
+        context.out << " " << op << " ";
         std::visit(*this, expr->right);
         context.out << ")";
     }
 
     void printer::expr_visitor::operator()(box<RowExpr> &expr) {
-        context.out << "(row";
-        for (auto &e : expr->exprs) {
-            context.out << " ";
-            std::visit(*this, e);
+        context.out << "(ROW";
+
+        if (!expr->exprs.empty()) {
+            context.out << " (";
+            std::visit(*this, expr->exprs.at(0));
+            for (int i = 1; i < expr->exprs.size(); i++) {
+                context.out << ", ";
+                std::visit(*this, expr->exprs.at(i));
+            }
+            context.out << ")";
         }
+        context.out << ")";
     }
 
     void printer::expr_visitor::operator()(box<RowSubquery>& expr) {
-        context.out << "(row ";
         std::visit(context.rev, expr->subquery);
     }
 
@@ -414,135 +437,139 @@ namespace psql_parse {
 //    }
 
     void printer::expr_visitor::operator()(box<Var> &expr) {
-        context.out << expr->name << std::endl;
+        context.out << expr->name;
     }
 
     void printer::expr_visitor::operator()(box<Collate> &expr) {
-        context.out << "(collate ";
+        context.out << "(";
         std::visit(*this, expr->var);
-        context.out << " ";
-        for (const auto& q: expr->collation->qualifier) {
-            context.out << q << ".";
-        }
+        context.out << " COLLATE ";
+        context.print(*expr->collation);
         context.out << expr->collation->name << ")";
     }
 
     void printer::expr_visitor::operator()(box<IsExpr> &expr) {
-        context.out << "(is ";
+        context.out << "(";
         std::visit(*this, expr->inner);
-        context.out << " ";
+        context.out << " IS ";
         (*this)(expr->truth_value);
         context.out << ")";
     }
 
     void printer::expr_visitor::operator()(box<BetweenPred> &expr) {
-        context.out << "(between ";
+        context.out << "(";
         std::visit(*this, expr->val);
-        context.out << " ";
+        context.out << " BETWEEN ";
+        if (expr->symmetric) {
+            context.out << "SYMMETRIC ";
+        }
         std::visit(*this, expr->low);
-        context.out << " ";
+        context.out << " AND ";
         std::visit(*this, expr->high);
         context.out << ")";
     }
 
     void printer::expr_visitor::operator()(box<InPred> &expr) {
-        context.out << "(in ";
-        if (expr->symmetric) {
-            context.out << "SYM ";
-        } else {
-            context.out << "ASYM ";
-        }
+        context.out << "(";
         std::visit(*this, expr->val);
-        context.out << " ";
+        context.out << " IN ";
         std::visit(context.rev, expr->rows);
         context.out << ")";
     }
 
     void printer::expr_visitor::operator()(box<LikePred> &expr) {
-        context.out << "(like ";
+        context.out << "(";
         std::visit(*this, expr->val);
-        context.out << " ";
+        context.out << " LIKE ";
         std::visit(*this, expr->pattern);
         if (expr->escape.has_value()) {
-            context.out << " ";
+            context.out << " ESCAPE ";
             std::visit(*this, expr->escape.value());
         }
         context.out << ")";
     }
 
     void printer::expr_visitor::operator()(box<ExistsPred> &expr) {
-        context.out << "(exists ";
+        context.out << "(EXISTS ";
         context.rev(expr->subquery);
         context.out << ")";
     }
 
     void printer::expr_visitor::operator()(box<UniquePred> &expr) {
-        context.out << "(unique ";
+        context.out << "(UNIQUE ";
         context.rev(expr->subquery);
         context.out << ")";
     }
 
     void printer::expr_visitor::operator()(box<SortSpec> &expr) {
-        std::string order;
+        std::visit(*this, expr->expr);
+
         switch(expr->order) {
             case SortSpec::Order::ASC:
-                order = "ASC";
+                context.out << " ASC ";
                 break;
             case SortSpec::Order::DESC:
-                order = "DESC";
+                context.out << " DESC ";
                 break;
         }
 
-        std::string nulls;
-        switch (expr->null_order) {
-            case SortSpec::NullOrder::DEFAULT:
-                nulls = "DEFAULT";
-                break;
-            case SortSpec::NullOrder::FIRST:
-                nulls = "FIRST";
-                break;
-            case SortSpec::NullOrder::LAST:
-                nulls = "LAST";
-                break;
+        if (expr->null_order != SortSpec::NullOrder::DEFAULT) {
+            switch (expr->null_order) {
+                case SortSpec::NullOrder::FIRST:
+                    context.out << " NULLS FIRST ";
+                    break;
+                case SortSpec::NullOrder::LAST:
+                    context.out << " NULLS LAST ";
+                    break;
+            }
         }
-
-        context.out << "(sort-by ";
-        std::visit(*this, expr->expr);
-        context.out << " " << order << " nulls:" << nulls << ")";
+        context.out << ")";
     }
 
     void printer::expr_visitor::operator()(box<GroupingSet> &expr) {
-        context.out << "(grouping ";
-        for (auto &g : expr->columns) {
-            std::visit(*this, g);
-            context.out << " ";
+        context.out << "(";
+        if (!expr->columns.empty()) {
+            std::visit(*this, expr->columns.at(0));
+            for (int i = 1; i < expr->columns.size(); i++) {
+                context.out << ", ";
+                std::visit(*this, expr->columns.at(i));
+            }
         }
         context.out << ")";
     }
 
     void printer::expr_visitor::operator()(box<GroupingSets> &expr) {
-        context.out << "(grouping-sets ";
-        for (auto &g : expr->sets) {
-            std::visit(*this, g);
-            context.out << " ";
+        context.out << "GROUPING SETS (";
+        if (!expr->sets.empty()) {
+            std::visit(*this, expr->sets.at(0));
+            for (int i = 1; i < expr->sets.size(); i++) {
+                context.out << ", ";
+                std::visit(*this, expr->sets.at(i));
+            }
         }
         context.out << ")";
     }
 
     void printer::expr_visitor::operator()(box<Rollup> &expr) {
-        context.out << "(rollup ";
-        for (auto &g : expr->sets) {
-            (*this)(g);
-            context.out << " ";
+        context.out << "ROLLUP (";
+        if (!expr->sets.empty()) {
+            (*this)(expr->sets.at(0));
+            for (int i = 1; i < expr->sets.size(); i++) {
+                context.out << ", ";
+                (*this)(expr->sets.at(i));
+            }
         }
         context.out << ")";
     }
 
     void printer::expr_visitor::operator()(box<Cube> &expr) {
-        context.out << "(cube ";
-        for (auto &g : expr->sets) {
-            (*this)(g);
-            context.out << " ";
+        context.out << "CUBE (";
+        if (!expr->sets.empty()) {
+            (*this)(expr->sets.at(0));
+            for (int i = 1; i < expr->sets.size(); i++) {
+                context.out << ", ";
+                (*this)(expr->sets.at(i));
+            }
         }
         context.out << ")";
     }
@@ -552,9 +579,8 @@ namespace psql_parse {
     }
 
     void printer::expr_visitor::operator()(box<AggregateExpr> &expr) {
-        context.out << "(aggregate ";
-        using
-        enum AggregateExpr::Op;
+        context.out << "(";
+        using enum AggregateExpr::Op;
         switch (expr->op) {
             case AVG:
                 context.out << "avg";
@@ -602,20 +628,20 @@ namespace psql_parse {
                 context.out << "intersection";
                 break;
         }
-        context.out << " ";
+        context.out << " (";
         if (expr->quantifier.has_value()) {
             switch (expr->quantifier.value()) {
                 case SetQuantifier::DISTINCT:
-                    context.out << "distinct ";
+                    context.out << "DISTINCT ";
                     break;
                 case SetQuantifier::ALL:
-                    context.out << "all ";
+                    context.out << "ALL ";
                     break;
             }
         }
         std::visit(*this, expr->argument);
         if (expr->filter.has_value()) {
-            context.out << " ";
+            context.out << " FILTER WHERE ";
             std::visit(*this, expr->filter.value());
         }
         context.out << ")";

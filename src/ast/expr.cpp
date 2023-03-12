@@ -64,7 +64,7 @@ namespace psql_parse {
 	: rows(std::move(rows)) {}
 
 	InPred::InPred(Expression val, RelExpression rows)
-	: val(std::move(val)), rows(std::move(rows)), symmetric(false) {}
+	: val(std::move(val)), rows(std::move(rows)) {}
 
 	LikePred::LikePred(Expression val, Expression pattern)
 	: val(std::move(val)), pattern(std::move(pattern)), escape(std::nullopt) {}

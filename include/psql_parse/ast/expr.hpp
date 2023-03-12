@@ -229,7 +229,7 @@ namespace psql_parse {
 
 		Kind kind;
 		bool natural;
-		Expression qualifier;
+		std::optional<Expression> qualifier;
 		std::vector<Name> columns;
 
 		RelExpression first;
@@ -453,7 +453,6 @@ namespace psql_parse {
 
 		Expression val;
 		RelExpression rows;
-		bool symmetric;
 
 		InPred(Expression val, RelExpression rows);
 	};
