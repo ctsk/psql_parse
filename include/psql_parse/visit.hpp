@@ -64,18 +64,174 @@ namespace psql_parse {
         : out(out), rev {*this}, ev {*this}, sv{*this} {};
 
         void print(Expression& expr);
-
         void print(RelExpression& expr);
-
         void print(Statement& stmt);
-
         void print(SetQuantifier q);
-
         void print(JoinExpr::Kind q);
-
         void print(QualifiedName& q);
-
         void print(BooleanLiteral::Val v);
     };
 
+
+    template <typename T>
+    struct default_visit {
+        struct rel_expr_visitor {
+            default_visit& context;
+            void operator()(box<JoinExpr>& expr) {
+                context.visit(expr->first);
+                context.visit(expr->second);
+
+                if (expr->qualifier.has_value())
+                    context.visit(expr->qualifier.value());
+
+                for (auto &col : expr->columns)
+                    context.visit(col);
+            }
+
+            void operator()(box<TableName>&) {}
+
+            void operator()(box<TableAlias>&expr) {
+                context.visit(expr->expression);
+            }
+
+            void operator()(box<SelectExpr>& expr) {
+                for (auto &target : expr->target_list)
+                    context.visit(target);
+
+                for (auto &from : expr->from_clause)
+                    context.visit(from);
+
+                if (expr->where_clause.has_value())
+                    context.visit(expr->where_clause.value());
+
+                if (expr->group_clause.has_value())
+                    for (auto &group : expr->group_clause->group_clause)
+                        context.visit(group);
+
+                if (expr->having_clause.has_value())
+                    context.visit(expr->having_clause.value());
+            }
+
+            void operator()(box<ValuesExpr> &expr) {
+                for (auto &row : expr->rows)
+                    context.visit(row);
+            }
+
+            void operator()(box<SetOp>& expr) {
+                context.visit(expr->left);
+                context.visit(expr->right);
+            }
+
+            void operator()(box<Query>& expr) {
+                context.visit(expr->expr);
+
+                for (auto &sort : expr->order)
+                    context.visit(sort);
+
+                if (expr->offset.has_value())
+                    context.visit(expr->offset.value());
+
+                if (expr->fetch.has_value())
+                    context.visit(expr->fetch.value());
+            }
+        };
+
+        struct expr_visitor {
+            default_visit& context;
+            void operator()(box<AliasExpr> &expr) {
+                context.visit(expr->expr);
+            };
+            void operator()(box<Asterisk> &) {};
+            void operator()(box<IntegerLiteral> &) {};
+            void operator()(box<FloatLiteral> &) {};
+            void operator()(box<StringLiteral> &) {};
+            void operator()(box<BooleanLiteral> &) {};
+            void operator()(box<UnaryOp> &expr) {
+                context.visit(expr->inner);
+            };
+            void operator()(box<BinaryOp> &expr) {
+                context.visit(expr->left);
+                context.visit(expr->right);
+            };
+            void operator()(box<RowExpr> &expr) {
+                for (auto &ex : expr->exprs)
+                    context.visit(ex);
+            };
+            void operator()(box<RowSubquery> &expr) {
+                context.visit(expr->subquery);
+            };
+            void operator()(box<Var> &expr) {
+
+            };
+            void operator()(box<Collate> &expr) {
+                context.visit(expr->var);
+            };
+            void operator()(box<IsExpr> &expr) {
+                context.visit(expr->inner);
+            };
+            void operator()(box<BetweenPred> &expr) {
+                context.visit(expr->val);
+                context.visit(expr->low);
+                context.visit(expr->high);
+            };
+            void operator()(box<InPred> &expr) {
+                context.visit(expr->val);
+                context.visit(expr->rows);
+            };
+            void operator()(box<LikePred> &expr) {
+                context.visit(expr->val);
+                context.visit(expr->pattern);
+                context.visit(expr->escape);
+            };
+            void operator()(box<ExistsPred> &expr) {
+                context.visit(expr->subquery);
+            };
+            void operator()(box<UniquePred> &expr) {
+                context.visit(expr->subquery);
+            };
+            void operator()(box<SortSpec> &expr) {
+                context.visit(expr->expr);
+            };
+            void operator()(box<GroupingSet> &expr) {
+                for (auto &ex : expr->columns)
+                    context.visit(ex);
+            };
+            void operator()(box<GroupingSets> &expr) {
+                for (auto &ex : expr->sets)
+                    context.visit(ex);
+            };
+            void operator()(box<Rollup> &expr) {
+                for (auto &ex : expr->sets)
+                    context.visit(ex);
+            };
+            void operator()(box<Cube> &expr) {
+                for (auto &ex : expr->sets)
+                    context.visit(ex);
+            };
+            void operator()(box<AggregateExpr> &expr) {
+                context.visit(expr->argument);
+
+                if (expr->filter.has_value())
+                    context.visit(expr->filter.value());
+            };
+        };
+
+        struct stmt_visitor {
+            default_visit& context;
+            void operator()(box<CreateStatement> &stmt){};
+            void operator()(box<SelectStatement> &stmt){};
+        };
+
+        T& derived;
+
+        void visit(RelExpression& expr) {
+            derived.visit(expr);
+        }
+        void visit(Expression& expr) {
+            derived.visit(expr);
+        }
+        void visit(Statement & stmt) {
+            derived.visit(stmt);
+        }
+    };
 }

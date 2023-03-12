@@ -81,6 +81,7 @@ set(SOURCES
 
         "${CMAKE_SOURCE_DIR}/src/driver.cpp"
         "${CMAKE_SOURCE_DIR}/src/scanner.cpp"
+        "${CMAKE_SOURCE_DIR}/src/visit.cpp"
 
         "${CMAKE_SOURCE_DIR}/src/ast/expr.cpp"
         "${CMAKE_SOURCE_DIR}/src/ast/stmt.cpp"

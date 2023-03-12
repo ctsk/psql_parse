@@ -472,7 +472,7 @@ namespace psql_parse {
 
 		box<Query> subquery;
 
-		ExistsPred(box<Query> subquery);
+		explicit ExistsPred(box<Query> subquery);
 	};
 
 	struct UniquePred {
@@ -480,7 +480,7 @@ namespace psql_parse {
 
 		box<Query> subquery;
 
-		UniquePred(box<Query> subquery);
+		explicit UniquePred(box<Query> subquery);
 	};
 
     struct AggregateExpr {

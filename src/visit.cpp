@@ -562,13 +562,13 @@ namespace psql_parse {
     void printer::print(JoinExpr::Kind q) {
         switch (q) {
             case JoinExpr::Kind::FULL:
-                out <<  "FULL OUTER";
+                out <<  "FULL OUTER"; break;
             case JoinExpr::Kind::LEFT:
-                out <<  "LEFT OUTER";
+                out <<  "LEFT OUTER"; break;
             case JoinExpr::Kind::RIGHT:
-                out <<  "RIGHT OUTER";
+                out <<  "RIGHT OUTER"; break;
             case JoinExpr::Kind::INNER:
-                out <<  "INNER";
+                out <<  "INNER"; break;
         }
     }
 
@@ -589,5 +589,6 @@ namespace psql_parse {
                 out << "UNKNOWN"; break;
         }
     }
+
 }
 #pragma clang diagnostic pop
