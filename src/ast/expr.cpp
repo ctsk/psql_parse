@@ -95,4 +95,8 @@ namespace psql_parse {
 
     AggregateExpr::AggregateExpr(Op op, Expression argument)
     : op(op), argument(std::move(argument)) {}
+
+    WithClause::WithClause() = default;
+    WithSpec::WithSpec(std::string name, box<Query> query)
+    : name(std::move(name)), query(std::move(query)) {}
 }

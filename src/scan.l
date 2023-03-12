@@ -228,6 +228,7 @@ preserve        { return psql_parse::parser::make_PRESERVE(loc); }
 primary         { return psql_parse::parser::make_PRIMARY(loc); }
 range           { return psql_parse::parser::make_RANGE(loc); }
 real            { return psql_parse::parser::make_REAL(loc); }
+recursive       { return psql_parse::parser::make_RECURSIVE(loc); }
 references      { return psql_parse::parser::make_REFERENCES(loc); }
 ref             { return psql_parse::parser::make_REF(loc); }
 right           { return psql_parse::parser::make_RIGHT(loc); }

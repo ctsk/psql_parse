@@ -166,6 +166,39 @@ namespace psql_parse {
     void printer::rel_expr_visitor::operator()(box<Query> &expr) {
         context.out << "( ";
 
+        if (expr->with.has_value()) {
+            context.out << "WITH ";
+            auto &with = expr->with.value();
+            if (with->recursive) {
+                context.out << "RECURSIVE ";
+            }
+
+            auto with_spec_printer = [this](WithSpec &spec){
+                context.out << spec.name;
+                if (!spec.columns.has_value()) {
+                    context.out << "(";
+                    if (!spec.columns.value().empty()) {
+                        context.out << spec.columns.value().at(0);
+                        for (unsigned i = 1; i < spec.columns.value().size(); i++) {
+                            context.out << ", " << spec.columns.value().at(i);
+                        }
+                    };
+                    context.out << ")";
+                }
+                context.out << " AS (";
+                context.rev(spec.query);
+                context.out << ")";
+            };
+
+            if (!with->elements.empty()) {
+                with_spec_printer(*(with->elements.at(0)));
+                for (unsigned i = 1; i < with->elements.size(); i++) {
+                    context.out << ", ";
+                    with_spec_printer(*(with->elements.at(i)));
+                }
+            }
+        }
+
         std::visit(*this, expr->expr);
 
         if (!expr->order.empty()) {
@@ -553,9 +586,9 @@ namespace psql_parse {
     void printer::print(SetQuantifier q) {
         switch (q) {
             case SetQuantifier::DISTINCT:
-                out << "DISTINCT";
+                out << "DISTINCT"; break;
             case SetQuantifier::ALL:
-                out << "ALL";
+                out << "ALL"; break;
         }
     }
 

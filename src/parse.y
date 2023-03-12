@@ -105,7 +105,7 @@ namespace psql_parse {
 	LEFT LIKE LOCAL MATCH MAX MIN MULTISET NATIONAL NATURAL NCHAR NCLOB NEXT NOT NO
 	NULLS NULL NUMERIC OBJECT OCTETS OFFSET ONLY ON ORDER OR OTHERS OUTER PARTIAL
 	PARTITION PERCENT PRECEDING PRECISION PRESERVE PRIMARY
-	RANGE REAL REFERENCES REF RIGHT ROLLUP ROWS ROW SCOPE
+	RANGE REAL RECURSIVE REFERENCES REF RIGHT ROLLUP ROWS ROW SCOPE
 	SESSION_USER SETS SET SELECT SMALLINT SOME STDDEV_POP STDDEV_SAMP SUM SYMMETRIC
 	SYSTEM_USER TABLE TEMPORARY TIES TIMESTAMP TIME
 	TRUE UNBOUNDED UNION UNIQUE UNKNOWN UPDATE USER
@@ -202,6 +202,11 @@ namespace psql_parse {
 %type <RelExpression>						simple_select
 %type <RelExpression>						select_clause
 %type <std::optional<SetQuantifier>>				opt_set_quantifier
+
+%type <std::optional<WithClause>>				opt_with_clause;
+%type <box<WithClause>>						with_clause;
+%type <box<WithClause>>						with_list;
+%type <box<WithSpec>>						with_list_element;
 
 %type <std::vector<box<SortSpec>>>				opt_order_by_clause
 %type <std::vector<box<SortSpec>>>				order_by_clause
@@ -778,14 +783,19 @@ select_with_parens:
  |  LP select_with_parens[inner] RP				{ $$ = $inner; }
  ;
 
-/*
- *  MISSING: with_clause
- */
 select_no_parens:
     simple_select
     	{
     		$$ = mkNode<Query>(@$, $simple_select);
     	}
+ |  with_clause select_clause opt_order_by_clause opt_offset_clause opt_fetch_first_clause
+	{
+		$$ = mkNode<Query>(@$, $select_clause);
+		$$->with = $with_clause;
+		$$->order = $opt_order_by_clause;
+		$$->offset = $opt_offset_clause;
+		$$->fetch = $opt_fetch_first_clause;
+	}
  |  select_clause order_by_clause opt_offset_clause opt_fetch_first_clause
 	{
 		$$ = mkNode<Query>(@$, $select_clause);
@@ -805,6 +815,29 @@ select_no_parens:
 		$$->fetch = $fetch_first_clause;
 	}
  ;
+
+/*
+ *  MISSING: search / cycle clause
+ */
+with_clause:
+    WITH with_list						{ $$ = $with_list; $$->recursive = false; }
+ |  WITH RECURSIVE with_list					{ $$ = $with_list; $$->recursive = true; }
+ ;
+
+with_list:
+    with_list_element[elem]					{ $$ = mkNode<WithClause>(@$); $$->elements.push_back($elem); }
+ |  with_list[list] COMMA with_list_element[elem]		{ $list->elements.push_back($elem); $$ = $list; }
+ ;
+
+with_list_element:
+    IDENTIFIER AS select_with_parens				{ $$ = mkNode<WithSpec>(@$, $IDENTIFIER, $select_with_parens); }
+ |  IDENTIFIER LP identifier_list RP AS select_with_parens
+	{
+		$$ = mkNode<WithSpec>(@$, $IDENTIFIER, $select_with_parens);
+		$$->columns = $identifier_list;
+	}
+ ;
+
 
 select_clause: simple_select | select_with_parens ;
 

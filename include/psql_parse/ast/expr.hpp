@@ -275,6 +275,25 @@ namespace psql_parse {
 		std::vector<Grouping> group_clause;
 	};
 
+    struct WithSpec {
+        DEFAULT_EQ(WithSpec);
+
+        Name name;
+        std::optional<std::vector<Name>> columns;
+        box<Query> query;
+
+        explicit WithSpec(std::string name, box<Query> query);
+    };
+
+    struct WithClause {
+        DEFAULT_EQ(WithClause);
+
+        bool recursive;
+        std::vector<box<WithSpec>> elements;
+
+        WithClause();
+    };
+
 	struct Window {
 		DEFAULT_EQ(Window);
 
@@ -356,6 +375,7 @@ namespace psql_parse {
 		DEFAULT_EQ(Query);
 
 		RelExpression expr;
+        std::optional<box<WithClause>> with;
 		std::vector<box<SortSpec>> order;
 		std::optional<box<IntegerLiteral>> offset;
 		std::optional<Fetch> fetch;

@@ -125,6 +125,10 @@ namespace psql_parse {
             void operator()(box<Query>& expr) {
                 context.visit(expr->expr);
 
+                if (expr->with.has_value())
+                    for (auto &with : expr->with.value()->elements)
+                        context.visit(with->query);
+
                 for (auto &sort : expr->order)
                     context.visit(sort);
 

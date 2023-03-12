@@ -301,6 +301,12 @@ TEST_CASE( "supported concepts", "[cov]") {
             "select foo from bar WINDOW windowname AS (RANGE BETWEEN UNBOUNDED FOLLOWING AND UNBOUNDED FOLLOWING EXCLUDE NO OTHERS)",
             "select foo from bar WINDOW windowname AS (GROUPS BETWEEN 1 PRECEDING AND 1 FOLLOWING)",
             /*
+             * CTE
+             */
+            "with foo as (select 1) select * from foo",
+            "with recursive foo as (select 1) select * from foo",
+            "with foo(a,b,c) as (select 1,2,3) select * from foo",
+            /*
              * Order
              */
             "select foo ORDER BY a, 2*b",
