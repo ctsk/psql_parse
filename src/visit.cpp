@@ -61,15 +61,15 @@ namespace psql_parse {
     }
 
     void printer::rel_expr_visitor::operator()(box<SelectExpr> &expr) {
-        context.out << "(SELECT";
+        context.out << "(SELECT ";
 
         if (expr->set_quantifier.has_value()) {
             switch (expr->set_quantifier.value()) {
                 case SetQuantifier::ALL:
-                    context.out << " ALL";
+                    context.out << "ALL ";
                     break;
                 case SetQuantifier::DISTINCT:
-                    context.out << " DISTINCT";
+                    context.out << "DISTINCT ";
                     break;
             }
         }
@@ -142,13 +142,13 @@ namespace psql_parse {
 
         switch(expr->op) {
             case SetOp::Op::UNION:
-                context.out << " UNION";
+                context.out << " UNION ";
                 break;
             case SetOp::Op::INTERSECT:
-                context.out << " INTERSECT";
+                context.out << " INTERSECT ";
                 break;
             case SetOp::Op::EXCEPT:
-                context.out << " EXCEPT";
+                context.out << " EXCEPT ";
                 break;
         }
 
@@ -164,7 +164,16 @@ namespace psql_parse {
     }
 
     void printer::rel_expr_visitor::operator()(box<Query> &expr) {
-        context.out << "( ";
+        // Query doesn't add anything
+        if (!expr->with.has_value()
+           && expr->order.empty()
+           && !expr->offset.has_value()
+           && !expr->fetch.has_value()) {
+            std::visit(*this, expr->expr);
+            return;
+        }
+
+        context.out << "(";
 
         if (expr->with.has_value()) {
             context.out << "WITH ";
@@ -208,7 +217,6 @@ namespace psql_parse {
                 context.out << ", ";
                 context.ev(expr->order.at(i));
             }
-            context.out << "";
         }
 
         if (expr->offset.has_value()) {
@@ -447,7 +455,6 @@ namespace psql_parse {
                     break;
             }
         }
-        context.out << ")";
     }
 
     void printer::expr_visitor::operator()(box<GroupingSet> &expr) {
