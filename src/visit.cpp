@@ -8,6 +8,22 @@ namespace psql_parse {
         context.out << "CREATE\n";
     }
 
+    void printer::stmt_visitor::operator()(box<DeleteStatement> &stmt) {
+        context.out << "DELETE FROM ";
+        if (stmt->only) {
+            context.out << "ONLY (";
+            context.print(*(stmt->table_name));
+            context.out << ")";
+        } else {
+            context.print(*(stmt->table_name));
+        }
+
+        if (stmt->where.has_value()) {
+            context.out << " WHERE ";
+            std::visit(context.ev, stmt->where.value());
+        }
+    }
+
     void printer::stmt_visitor::operator()(box<InsertStatement> &stmt) {
         context.out << "INSERT INTO ";
         context.print(*(stmt->table_name));

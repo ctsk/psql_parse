@@ -54,6 +54,7 @@ namespace psql_parse {
             printer& context;
             void operator()(box<CreateStatement> &stmt);
             void operator()(box<InsertStatement> &stmt);
+            void operator()(box<DeleteStatement> &stmt);
             void operator()(box<SelectStatement> &stmt);
         };
 
@@ -228,6 +229,11 @@ namespace psql_parse {
                 auto &src = stmt->source;
                 if (std::holds_alternative<box<Query>>(src)) {
                     context.rev(std::get<box<Query>>(src));
+                }
+            };
+            void operator()(box<DeleteStatement> &stmt){
+                if (stmt->where.has_value()) {
+                    context.ev(stmt->where.value());
                 }
             };
             void operator()(box<SelectStatement> &stmt){

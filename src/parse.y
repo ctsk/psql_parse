@@ -265,6 +265,8 @@ namespace psql_parse {
 
 %type <box<InsertStatement>>					InsertStatement
 %type <InsertStatement::Override>				insert_override
+
+%type <box<DeleteStatement>>	  			        DeleteStatement
 %%
 
 %start pseudo_start;
@@ -273,6 +275,7 @@ pseudo_start:
     CreateStatement	{ driver.result_ = $CreateStatement; }
  |  SelectStatement	{ driver.result_ = $SelectStatement; }
  |  InsertStatement	{ driver.result_ = $InsertStatement; }
+ |  DeleteStatement	{ driver.result_ = $DeleteStatement; }
  ;
 
 /*
@@ -1071,7 +1074,7 @@ alias_clause:
  ;
 
 where_clause:
-    WHERE value_expr 						{ $$ = $value_expr; }
+    WHERE bool_value_expr 					{ $$ = $bool_value_expr; }
  |  %empty							{ $$ = std::nullopt; }
  ;
 
@@ -1272,6 +1275,33 @@ InsertStatement:
 insert_override:
     OVERRIDING USER VALUE					{ $$ = InsertStatement::Override::USER_VALUE; }
  |  OVERRIDING SYSTEM VALUE					{ $$ = InsertStatement::Override::SYSTEM_VALUE; }
+ ;
+
+
+/************
+ *          *
+ *  DELETE  *
+ *          *
+ ************/
+
+/*
+ * Missing:
+ * - <delete statement: positioned>
+ * - [ for portion of ... ]
+ * - [AS <correlation name>]
+ */
+
+DeleteStatement:
+    DELETE FROM qualified_name[table_name] where_clause
+        {
+                $$ = mkNode<DeleteStatement>(@$, $table_name, false);
+                $$->where = $where_clause;
+        }
+ |  DELETE FROM ONLY LP qualified_name[table_name] RP where_clause
+        {
+                $$ = mkNode<DeleteStatement>(@$, $table_name, true);
+                $$->where = $where_clause;
+        }
  ;
 
 %%
