@@ -53,6 +53,7 @@ namespace psql_parse {
         struct stmt_visitor {
             printer& context;
             void operator()(box<CreateStatement> &stmt);
+            void operator()(box<InsertStatement> &stmt);
             void operator()(box<SelectStatement> &stmt);
         };
 
@@ -223,7 +224,15 @@ namespace psql_parse {
         struct stmt_visitor {
             default_visit& context;
             void operator()(box<CreateStatement> &stmt){};
-            void operator()(box<SelectStatement> &stmt){};
+            void operator()(box<InsertStatement> &stmt){
+                auto &src = stmt->source;
+                if (std::holds_alternative<box<Query>>(src)) {
+                    context.rev(std::get<box<Query>>(src));
+                }
+            };
+            void operator()(box<SelectStatement> &stmt){
+                context.rev(stmt->rel_expr);
+            };
         };
 
         T& derived;

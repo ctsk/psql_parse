@@ -183,9 +183,11 @@ groups          { return psql_parse::parser::make_GROUPS(loc); }
 group           { return psql_parse::parser::make_GROUP(loc); }
 having          { return psql_parse::parser::make_HAVING(loc); }
 inner           { return psql_parse::parser::make_INNER(loc); }
+insert          { return psql_parse::parser::make_INSERT(loc); }
 integer         { return psql_parse::parser::make_INTEGER(loc); }
 intersection    { return psql_parse::parser::make_INTERSECTION(loc); }
 intersect       { return psql_parse::parser::make_INTERSECT(loc); }
+into            { return psql_parse::parser::make_INTO(loc); }
 int             { return psql_parse::parser::make_INTEGER(loc); }
 in              { return psql_parse::parser::make_IN(loc); }
 is              { return psql_parse::parser::make_IS(loc); }

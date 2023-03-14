@@ -35,6 +35,7 @@
 #include "psql_parse/ast/stmt.hpp"
 #include "psql_parse/ast/common.hpp"
 #include "psql_parse/ast/create.hpp"
+#include "psql_parse/ast/insert.hpp"
 #include "psql_parse/ast/select.hpp"
 
 namespace psql_parse {
@@ -101,15 +102,15 @@ namespace psql_parse {
 	DECIMAL DEFAULT DELETE DESC DISTINCT DOUBLE
 	ESCAPE EVERY EXCEPT EXCLUDE EXISTS FALSE FETCH FILTER FIRST FLOAT FOLLOWING
 	FOREIGN FROM FULL FUSION GLOBAL GROUPING GROUPS GROUP
-	HAVING INNER INTEGER INTERSECTION INTERSECT IN IS JOIN KEY LARGE LAST
+	HAVING INNER INSERT INTEGER INTERSECTION INTERSECT INTO IN IS JOIN KEY LARGE LAST
 	LEFT LIKE LOCAL MATCH MAX MIN MULTISET NATIONAL NATURAL NCHAR NCLOB NEXT NOT NO
-	NULLS NULL NUMERIC OBJECT OCTETS OFFSET ONLY ON ORDER OR OTHERS OUTER PARTIAL
+	NULLS NULL NUMERIC OBJECT OCTETS OFFSET ONLY ON ORDER OR OTHERS OUTER OVERRIDING PARTIAL
 	PARTITION PERCENT PRECEDING PRECISION PRESERVE PRIMARY
 	RANGE REAL RECURSIVE REFERENCES REF RIGHT ROLLUP ROWS ROW SCOPE
 	SESSION_USER SETS SET SELECT SMALLINT SOME STDDEV_POP STDDEV_SAMP SUM SYMMETRIC
-	SYSTEM_USER TABLE TEMPORARY TIES TIMESTAMP TIME
+	SYSTEM_USER SYSTEM TABLE TEMPORARY TIES TIMESTAMP TIME
 	TRUE UNBOUNDED UNION UNIQUE UNKNOWN UPDATE USER
-	USING VALUES VARBINARY VARCHAR VARYING VAR_POP VAR_SAMP WHERE WINDOW WITHOUT WITH ZONE
+	USING VALUES VALUE VARBINARY VARCHAR VARYING VAR_POP VAR_SAMP WHERE WINDOW WITHOUT WITH ZONE
 
 %left UNION EXCEPT
 %left INTERSECT
@@ -197,6 +198,7 @@ namespace psql_parse {
 %type <std::optional<Expression>>				opt_aggregate_filter
 
 %type <Statement>						SelectStatement
+%type <box<Query>>						select_with_without_parens
 %type <box<Query>>						select_no_parens
 %type <box<Query>>						select_with_parens
 %type <RelExpression>						simple_select
@@ -261,6 +263,8 @@ namespace psql_parse {
 %type <Window::Frame::Bound>					frame_bound
 %type <std::optional<Window::Frame::Exclusion>>			opt_frame_exclusion
 
+%type <box<InsertStatement>>					InsertStatement
+%type <InsertStatement::Override>				insert_override
 %%
 
 %start pseudo_start;
@@ -268,6 +272,7 @@ namespace psql_parse {
 pseudo_start:
     CreateStatement	{ driver.result_ = $CreateStatement; }
  |  SelectStatement	{ driver.result_ = $SelectStatement; }
+ |  InsertStatement	{ driver.result_ = $InsertStatement; }
  ;
 
 /*
@@ -435,6 +440,7 @@ qualified_name:
 	}
 
  ;
+
 qualifier_list:
     IDENTIFIER[name]						{ $$ = std::vector<Name>(); $$.emplace_back($name); }
  |  qualifier_list[qn] DOT IDENTIFIER[name]			{ $qn.push_back($name); $$ = $qn; }
@@ -776,6 +782,11 @@ opt_aggregate_filter:
 SelectStatement:
     select_no_parens						{ $$ = mkNode<SelectStatement>(@$, $select_no_parens); }
  |  select_with_parens						{ $$ = mkNode<SelectStatement>(@$, $select_with_parens); }
+ ;
+
+select_with_without_parens:
+    select_with_parens
+ |  select_no_parens
  ;
 
 select_with_parens:
@@ -1216,6 +1227,52 @@ opt_frame_exclusion:
  |  %empty							{ $$ = std::nullopt; }
  ;
 
+
+/************
+ *          *
+ *  INSERT  *
+ *          *
+ ************/
+
+/*
+ * Duplication necessary to prevent shift/reduce conflicts...
+ */
+InsertStatement:
+    INSERT INTO qualified_name[table_name] LP identifier_list RP insert_override select_with_without_parens
+	{
+		$$ = mkNode<InsertStatement>(@$, $table_name);
+		$$->column_names = $identifier_list;
+		$$->override = $insert_override;
+		$$->source = $select_with_without_parens;
+	}
+ |  INSERT INTO qualified_name[table_name] insert_override select_with_without_parens
+	{
+		$$ = mkNode<InsertStatement>(@$, $table_name);
+		$$->override = $insert_override;
+		$$->source = $select_with_without_parens;
+	}
+ |  INSERT INTO qualified_name[table_name] LP identifier_list RP select_with_without_parens
+	{
+		$$ = mkNode<InsertStatement>(@$, $table_name);
+		$$->column_names = $identifier_list;
+		$$->source = $select_with_without_parens;
+	}
+ |  INSERT INTO qualified_name[table_name] select_with_without_parens
+	{
+		$$ = mkNode<InsertStatement>(@$, $table_name);
+		$$->source = $select_with_without_parens;
+	}
+ |  INSERT INTO qualified_name[table_name] DEFAULT VALUES
+	{
+		$$ = mkNode<InsertStatement>(@$, $table_name);
+		$$->source = InsertStatement::Default {};
+	}
+ ;
+
+insert_override:
+    OVERRIDING USER VALUE					{ $$ = InsertStatement::Override::USER_VALUE; }
+ |  OVERRIDING SYSTEM VALUE					{ $$ = InsertStatement::Override::SYSTEM_VALUE; }
+ ;
 
 %%
 

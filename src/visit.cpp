@@ -8,6 +8,36 @@ namespace psql_parse {
         context.out << "CREATE\n";
     }
 
+    void printer::stmt_visitor::operator()(box<InsertStatement> &stmt) {
+        context.out << "INSERT INTO ";
+        context.print(*(stmt->table_name));
+        context.out << " ";
+        if (!stmt->column_names.empty()) {
+            context.out << "(";
+            context.out << stmt->column_names.at(0);
+            for (unsigned i = 1; i < stmt->column_names.size(); i++) {
+                context.out << ", " << stmt->column_names.at(i);
+            }
+            context.out << ") ";
+        }
+        if (stmt->override.has_value()) {
+            context.out << "OVERRIDING ";
+            switch(stmt->override.value()) {
+                case InsertStatement::Override::USER_VALUE:
+                    context.out << "USER VALUE ";
+                    break;
+                case InsertStatement::Override::SYSTEM_VALUE:
+                    context.out << "SYSTEM VALUE ";
+                    break;
+            }
+        }
+        if (std::holds_alternative<InsertStatement::Default>(stmt->source)) {
+            context.out << "DEFAULT VALUES";
+        } else {
+            context.rev(std::get<box<Query>>(stmt->source));
+        }
+    }
+
     void printer::stmt_visitor::operator()(box<SelectStatement> &stmt) {
         context.out << "SELECT: ";
         context.rev(stmt->rel_expr);
